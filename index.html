@@ -22,6 +22,18 @@
   <div class="live" id="live"><span class="rec"></span><b id="liveTx">LIVE</b><small><span id="viewers">1</span> watching</small></div>
 </header>
 
+<div id="evChip" class="evChip" hidden></div>
+<div id="feed" class="feed"></div>
+
+<div id="intro" class="intro glass">
+  <button id="introClose" class="x" title="Close"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  <b>A colony of digital bacteria, live</b>
+  <p>Every digital bacterium has an artificial brain and lives in the same culture medium, running 24/7 on a server. At the start they knew nothing; the ones that absorb nutrients divide into daughter cells with similar brains, and evolution happens on its own. The purple shapes are amoebas, which hunt bacteria. The names are real genera, but the behavior is a simplified simulation.</p>
+</div>
+
+<div id="overlay" class="overlay glass" hidden></div>
+
+<div class="leftCol">
 <div id="legend" class="legend glass">
   <button id="legendBtn" class="legendHead"><span data-ic="search">Legend: what you are seeing</span><em id="legendArrow">hide</em></button>
   <div id="legendBody" class="legendBody">
@@ -33,17 +45,6 @@
     <div class="lg"><canvas data-k="div" width="84" height="48"></canvas><div><b>Cell division</b><span>With spare energy, it divides. The daughter cell inherits the brain, with small mutations.</span></div></div>
   </div>
 </div>
-
-<div id="evChip" class="evChip" hidden></div>
-<div id="feed" class="feed"></div>
-
-<div id="intro" class="intro glass">
-  <button id="introClose" class="x" title="Close"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-  <b>A colony of digital bacteria, live</b>
-  <p>Every digital bacterium has an artificial brain and lives in the same culture medium, running 24/7 on a server. At the start they knew nothing; the ones that absorb nutrients divide into daughter cells with similar brains, and evolution happens on its own. The purple shapes are amoebas, which hunt bacteria. The names are real genera, but the behavior is a simplified simulation.</p>
-</div>
-
-<div id="overlay" class="overlay glass" hidden></div>
 
 <div id="card" class="card glass">
   <div class="cardTop">
@@ -58,6 +59,8 @@
   <div class="energy"><i id="cEnergy"></i><span id="cEnergyTx">energy</span></div>
   <div class="say" id="cSay">Observing the world…</div>
   <div class="cStats"><span data-ic="leaf"><b id="cEat">0</b> nutrients</span><span data-ic="lineage"><b id="cKids">0</b> divisions</span><span data-ic="escape"><b id="cEsc">0</b> escapes</span></div>
+</div>
+
 </div>
 
 <div id="brainBox" class="brain glass">

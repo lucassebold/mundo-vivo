@@ -120,3 +120,15 @@ svg.ic { vertical-align: -3px; flex: none; }
 .brainCap { font-size: 15px; }
 .brainChips { font-size: 13px; }
 .brain .hint { font-size: 12.5px; }
+
+.energy { height: 22px; border-radius: 11px; margin: 12px 0 10px; }
+.energy span { font-size: 12.5px; line-height: 22px; padding-left: 12px; letter-spacing: .02em; }
+
+.leftCol { position: fixed; left: 16px; bottom: 16px; width: 360px; display: flex; flex-direction: column; gap: 10px; z-index: 5; max-height: calc(100vh - 250px); }
+.leftCol .card, .leftCol .legend { position: static; width: auto; left: auto; bottom: auto; }
+.leftCol .card { flex: none; }
+.leftCol .legend { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.leftCol .legendBody { max-height: none; overflow-y: auto; min-height: 0; }
+.leftCol .legend.min { flex: none; }
+.cName { word-break: break-word; }
+@media (max-width: 900px) { .leftCol { width: calc(100% - 24px); left: 12px; bottom: 12px; } }
