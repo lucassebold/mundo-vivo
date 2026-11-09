@@ -1,20 +1,17 @@
-/* Mundo Vivo: roda a simulação, escolhe a protagonista, narra o que ela faz e mostra tudo na tela. */
+/* Mundo Vivo (cliente): recebe a simulação do servidor ao vivo, suaviza o movimento e mostra a protagonista. */
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var cv = $('world'), ctx = cv.getContext('2d'), bcv = $('brain');
-  var DT = 1 / 20;
-  var world = Sim.create(Math.floor(Math.random() * 1e9));
-  var state = { speed: 1, acc: 0, last: 0, prot: null, next: null, switchAt: 0, overlayUntil: 0, brainOn: true, sayPri: -1, sayUntil: 0, bubble: { i: 'search', c: '#a9b6d8' }, lastUi: 0, frame: 0, milestone: 1, lifeNote: 180 };
+  var W = 0, H = 0, dpr = 1;
+  var cam = { x: Sim.W / 2, y: Sim.H / 2, z: 1 };
+  var view = { t: 0, snapAt: 0, interval: 125, creatures: {}, list: [], foods: [], preds: [], patches: [], prot: null, st: null, ev: null, lastSnapPerf: 0, connected: false };
+  var state = { brainOn: true, sayPri: -1, sayUntil: 0, bubble: { i: 'search', c: '#a9b6d8' }, frame: 0, lastUi: 0, stageOf: null, stage: null, overlay: false, lastFrame: 0 };
+
   document.querySelectorAll('[data-ic]').forEach(function (el) { el.insertAdjacentHTML('afterbegin', Icons.svg(el.getAttribute('data-ic'), 15, Icons.COLOR.accent)); });
   $('cAvatar').innerHTML = Icons.svg('search', 26, Icons.COLOR.muted);
-  var cam = { x: Sim.W / 2, y: Sim.H / 2, z: 1 };
-  var W = 0, H = 0, dpr = 1;
 
-  function resize() {
-    dpr = window.devicePixelRatio || 1; W = window.innerWidth; H = window.innerHeight;
-    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
-  }
-  window.addEventListener('resize', function () { resize(); if (typeof draw === 'function') draw(state.last); }); resize();
+  function resize() { dpr = window.devicePixelRatio || 1; W = window.innerWidth; H = window.innerHeight; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  window.addEventListener('resize', function () { resize(); if (view.connected) draw(performance.now()); }); resize();
 
   // ---------- Feed ----------
   var FEED_COLOR = { good: Icons.COLOR.good, bad: Icons.COLOR.danger, world: Icons.COLOR.accent, '': Icons.COLOR.info };
@@ -29,42 +26,81 @@
     setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, 7700);
   }
 
-  // ---------- Protagonista ----------
-  function parentLabel(c) {
-    if (c.gen <= 1) return 'da primeira geração';
-    return 'geração ' + c.gen;
-  }
-  function setProt(c, descendantOf) {
-    state.prot = c; state.sayPri = -1; state.sayUntil = 0;
-    feed('dna', 'Agora você acompanha ' + c.name + (descendantOf ? ', descendente de ' + descendantOf.name : '') + ' (' + parentLabel(c) + ')', 'good');
+  // ---------- Mensagens vindas do servidor ----------
+  var CAUSE = { fome: 'de fome', predador: 'pega por um predador', velhice: 'de velhice, depois de uma vida longa' };
+  function onMsg(m) {
+    if (m.k === 'prot') {
+      $('overlay').hidden = true; state.overlay = false; state.sayPri = -1; state.sayUntil = 0;
+      feed('dna', 'Agora você acompanha ' + m.name + (m.from ? ', descendente de ' + m.from : '') + ' (' + (m.gen <= 1 ? 'da primeira geração' : 'geração ' + m.gen) + ')', 'good');
+    } else if (m.k === 'death') {
+      var o = $('overlay');
+      o.innerHTML = '<h2>' + Icons.svg('skull', 28, Icons.COLOR.danger) + ' ' + m.name + ' morreu</h2><p>' + (m.cause === 'predador' ? 'Foi pega por um predador' : m.cause === 'fome' ? 'Morreu de fome' : 'Morreu de velhice, depois de uma vida longa') + ' depois de ' + m.age + ' s de vida.</p>' +
+        '<p>Comeu ' + m.eaten + ' vezes · ' + m.kids + ' filhote' + (m.kids === 1 ? '' : 's') + ' · ' + m.escapes + ' fuga' + (m.escapes === 1 ? '' : 's') + '</p>' +
+        '<div class="next">' + (m.desc ? 'Sua linhagem continua com ' + m.nextName + '…' : 'Procurando outra criatura para acompanhar…') + '</div>';
+      o.hidden = false; state.overlay = true;
+      feed('skull', m.name + ' morreu ' + (CAUSE[m.cause] || ''), 'bad');
+    } else if (m.k === 'birth') feed('heart', m.name + ' teve um filhote', 'good');
+    else if (m.k === 'escape') feed('escape', m.name + ' escapou de um predador', 'good');
+    else if (m.k === 'world') feed(m.icon || 'globe', m.text, 'world');
+    else if (m.k === 'gen') feed('dna', 'Nasceu a geração ' + m.gen, '');
+    else if (m.k === 'life') feed('trend', 'Vida média: ' + m.avg + ' s (no início: ' + m.base + ' s)', m.avg >= m.base ? 'good' : '');
   }
 
-  var CAUSE = { fome: 'de fome', predador: 'pega por um predador', velhice: 'de velhice, depois de uma vida longa' };
-  function protDied(c, cause) {
-    var next = Sim.pickProtagonist(world, c);
-    state.next = next; state.switchAt = state.last + 3300; state.overlayUntil = state.switchAt;
-    var o = $('overlay');
-    o.innerHTML = '<h2>' + Icons.svg('skull', 28, Icons.COLOR.danger) + ' ' + c.name + ' morreu</h2><p>' + (cause === 'predador' ? 'Foi pega por um predador' : cause === 'fome' ? 'Morreu de fome' : 'Morreu de velhice, depois de uma vida longa') + ' depois de ' + Math.round(c.age) + ' s de vida.</p>' +
-      '<p>Comeu ' + c.eaten + ' vezes · ' + c.kids + ' filhote' + (c.kids === 1 ? '' : 's') + ' · ' + c.escapes + ' fuga' + (c.escapes === 1 ? '' : 's') + '</p>' +
-      '<div class="next">' + (next.descendant ? 'Sua linhagem continua com ' + next.c.name + '…' : 'Procurando outra criatura para acompanhar…') + '</div>';
-    o.hidden = false;
-    feed('skull', c.name + ' morreu ' + (CAUSE[cause] || ''), 'bad');
+  // ---------- Recebendo snapshots ----------
+  function angLerp(a, b, k) { var d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return a + d * k; }
+
+  function onSnap(s, now) {
+    var first = !view.connected;
+    view.connected = true;
+    if (view.lastSnapPerf) view.interval = Math.max(60, Math.min(400, view.interval * .8 + (now - view.lastSnapPerf) * .2));
+    view.lastSnapPerf = now; view.snapAt = now; view.t = s.t; view.st = s.st; view.ev = s.ev; view.viewers = s.viewers;
+
+    var seen = {}, i, a, c, id;
+    for (i = 0; i < s.cs.length; i++) {
+      a = s.cs[i]; seen[a[0]] = 1; c = view.creatures[a[0]];
+      if (!c) { c = view.creatures[a[0]] = { id: a[0], x: a[1], y: a[2], a: a[3], fx: a[1], fy: a[2], fa: a[3], alive: true, trail: [], near: { food: null, pred: null }, g: {}, inp: [0, 0, 0, 0, 0, 0, 0, 0], hid: [], out: [0, 0], brain: [] }; }
+      c.fx = c.x; c.fy = c.y; c.fa = c.a; c.tx = a[1]; c.ty = a[2]; c.ta = a[3]; c.t0 = now;
+      c.r = a[4]; c.g.hue = a[5]; c.g.vision = a[6]; c.speed = a[7]; c.e = a[8]; c.age = a[9];
+    }
+    for (id in view.creatures) if (!seen[id]) { if (view.prot && view.prot.id === +id) view.prot.alive = false; delete view.creatures[id]; }
+    view.list = []; for (id in view.creatures) view.list.push(view.creatures[id]);
+
+    view.foods = s.fs.map(function (f) { return { x: f[0], y: f[1], ph: (f[0] * 13 + f[1] * 7) % 6.28 }; });
+    var oldPreds = view.preds;
+    view.preds = s.ps.map(function (p, k) {
+      var o = oldPreds[k];
+      return { x: o ? o.x : p[0], y: o ? o.y : p[1], a: o ? o.a : p[2], fx: o ? o.x : p[0], fy: o ? o.y : p[1], fa: o ? o.a : p[2], tx: p[0], ty: p[1], ta: p[2], t0: now, r: 13, state: p[3] === 1 ? 'chase' : p[3] === 2 ? 'rest' : 'wander' };
+    });
+    view.patches = s.pt.map(function (p) { return { x: p[0], y: p[1], r: p[2] }; });
+
+    var pr = s.pr;
+    if (pr) {
+      var pc = view.creatures[pr.id] || (view.prot && view.prot.id === pr.id ? view.prot : null);
+      if (!pc) pc = { id: pr.id, x: cam.x, y: cam.y, a: 0, r: 6, trail: [], g: {}, speed: 0 };
+      view.prot = pc;
+      pc.alive = pr.alive; pc.name = pr.name; pc.gen = pr.gen; pc.eaten = pr.eaten; pc.kids = pr.kids; pc.escapes = pr.escapes; pc.mut = pr.mut; pc.straight = pr.straight; pc.thrust = pr.thrust;
+      pc.inp = pr.inp; pc.hid = pr.hid; pc.out = pr.out; pc.brain = pr.brain; pc.e = pr.e; pc.age = pr.age; pc.g.vision = pr.vision; pc.g.hue = pr.hue;
+      pc.near = { food: pr.near.food ? { dx: pr.near.food[0], dy: pr.near.food[1] } : null, pred: pr.near.pred ? { dx: pr.near.pred[0], dy: pr.near.pred[1], d: pr.near.pred[2] } : null };
+      pc.lastAte = pr.lastAte; pc.lastKid = pr.lastKid; pc.lastEscape = pr.lastEscape;
+      if (first) { cam.x = pc.x; cam.y = pc.y; }
+    }
+    for (i = 0; i < s.msgs.length; i++) onMsg(s.msgs[i]);
   }
 
   // ---------- Narração (descreve o estado real da criatura) ----------
   function narrate(c, now) {
-    var t = world.t, r;
-    if (c.near.pred && c.near.pred.d < 120) r = { pri: 5, i: 'alert', c: Icons.COLOR.danger, s: 'Perigo! Tem um predador perto dela.' };
-    else if (t - c.lastEscape < 3) r = { pri: 5, i: 'escape', c: Icons.COLOR.good, s: 'Escapou do predador por pouco!' };
-    else if (t - c.lastKid < 3.5) r = { pri: 4, i: 'heart', c: Icons.COLOR.danger, s: 'Teve um filhote! São ' + c.kids + ' até agora.' };
-    else if (t - c.lastAte < 1.6) r = { pri: 3, i: 'leaf', c: Icons.COLOR.good, s: 'Comeu! Energia em ' + Math.round(c.e / Sim.MAXE * 100) + '%.' };
-    else if (c.e < 35) r = { pri: 2, i: 'battery', c: Icons.COLOR.accent, s: 'Quase sem energia. Precisa achar comida logo.' };
-    else if (c.straight < .35 && c.age > 8) r = { pri: 1, i: 'spiral', c: Icons.COLOR.info, s: 'Dando voltas: o cérebro dela ainda não aprendeu a seguir reto até a comida.' };
-    else if (c.near.food && c.inp[0] > .5 && c.thrust > .25) r = { pri: 1, i: 'target', c: Icons.COLOR.gold, s: 'Viu comida e está indo atrás.' };
-    else if (c.near.food && c.inp[0] < -.3) r = { pri: 1, i: 'away', c: Icons.COLOR.muted, s: 'Tinha comida por perto, mas foi pro outro lado.' };
-    else if (c.age < Sim.MATURE) r = { pri: 0, i: 'sprout', c: Icons.COLOR.good, s: 'Ainda é filhote: crescendo e aprendendo a achar comida.' };
-    else if (c.age > 200) r = { pri: 0, i: 'hourglass', c: Icons.COLOR.muted, s: 'Já está velha: mais lenta, mas ainda procurando comida.' };
-    else r = { pri: 0, i: 'search', c: Icons.COLOR.muted, s: 'Explorando em busca de comida.' };
+    var t = view.t, r, C = Icons.COLOR;
+    if (c.near.pred && c.near.pred.d < 120) r = { pri: 5, i: 'alert', c: C.danger, s: 'Perigo! Tem um predador perto dela.' };
+    else if (t - c.lastEscape < 3) r = { pri: 5, i: 'escape', c: C.good, s: 'Escapou do predador por pouco!' };
+    else if (t - c.lastKid < 3.5) r = { pri: 4, i: 'heart', c: C.danger, s: 'Teve um filhote! São ' + c.kids + ' até agora.' };
+    else if (t - c.lastAte < 1.6) r = { pri: 3, i: 'leaf', c: C.good, s: 'Comeu! Energia em ' + Math.round(c.e / Sim.MAXE * 100) + '%.' };
+    else if (c.e < 35) r = { pri: 2, i: 'battery', c: C.accent, s: 'Quase sem energia. Precisa achar comida logo.' };
+    else if (c.straight < .35 && c.age > 8) r = { pri: 1, i: 'spiral', c: C.info, s: 'Dando voltas: o cérebro dela ainda não aprendeu a seguir reto até a comida.' };
+    else if (c.near.food && c.inp[0] > .5 && c.thrust > .25) r = { pri: 1, i: 'target', c: C.gold, s: 'Viu comida e está indo atrás.' };
+    else if (c.near.food && c.inp[0] < -.3) r = { pri: 1, i: 'away', c: C.muted, s: 'Tinha comida por perto, mas foi pro outro lado.' };
+    else if (c.age < Sim.MATURE) r = { pri: 0, i: 'sprout', c: C.good, s: 'Ainda é filhote: crescendo e aprendendo a achar comida.' };
+    else if (c.age > 200) r = { pri: 0, i: 'hourglass', c: C.muted, s: 'Já está velha: mais lenta, mas ainda procurando comida.' };
+    else r = { pri: 0, i: 'search', c: C.muted, s: 'Explorando em busca de comida.' };
     if (r.pri >= state.sayPri || now > state.sayUntil) {
       if (r.s !== $('cSay').textContent) { $('cSay').textContent = r.s; state.sayUntil = now + 1900; }
       state.sayPri = r.pri; state.bubble = { i: r.i, c: r.c }; $('cAvatar').innerHTML = Icons.svg(r.i, 26, r.c);
@@ -72,33 +108,6 @@
     if (now > state.sayUntil) state.sayPri = -1;
   }
 
-  // ---------- Mensagens do mundo ----------
-  function drain() {
-    var i, m, p = state.prot;
-    for (i = 0; i < world.msgs.length; i++) {
-      m = world.msgs[i];
-      if (m.type === 'death' && p && m.c === p && !state.next) protDied(m.c, m.cause);
-      else if (m.type === 'birth' && p && m.c === p) feed('heart', p.name + ' teve um filhote', 'good');
-      else if (m.type === 'escape' && p && m.c === p) feed('escape', p.name + ' escapou de um predador', 'good');
-      else if (m.type === 'event') feed('globe', m.text, 'world');
-      else if (m.type === 'event-end') feed('globe', m.text, 'world');
-      else if (m.type === 'rescue') feed('seed', m.text, 'world');
-    }
-    world.msgs.length = 0;
-  }
-
-  // ---------- Câmera ----------
-  function camera(dt) {
-    var p = state.prot, z = Math.max(W / 1000, H / 640, W / Sim.W, H / Sim.H);
-    cam.z += (z - cam.z) * Math.min(1, dt * 3);
-    if (p) { cam.x += (p.x - cam.x) * Math.min(1, dt * 3); cam.y += (p.y - cam.y) * Math.min(1, dt * 3); }
-    var hw = W / (2 * cam.z), hh = H / (2 * cam.z);
-    cam.x = hw * 2 >= Sim.W ? Sim.W / 2 : Math.max(hw, Math.min(Sim.W - hw, cam.x));
-    cam.y = hh * 2 >= Sim.H ? Sim.H / 2 : Math.max(hh, Math.min(Sim.H - hh, cam.y));
-  }
-
-  // ---------- Interface ----------
-  function fmtTime(t) { return t < 60 ? Math.round(t) + ' s' : Math.floor(t / 60) + ' min'; }
   function dirText(fwd, side) { return fwd > .55 ? 'à frente' : fwd < -.55 ? 'atrás' : side > 0 ? 'à direita' : 'à esquerda'; }
   function brainCaption(c) {
     var seen = [];
@@ -108,19 +117,26 @@
     var act = (Math.abs(turn) < .15 ? '<b>seguir reto</b>' : '<b>virar para a ' + (turn > 0 ? 'direita' : 'esquerda') + '</b>') + ' e <b>' + (acc > 66 ? 'acelerar forte' : acc > 33 ? 'andar devagar' : 'quase parar') + '</b>';
     return (seen.length ? 'Vê ' + seen.join(' e ') : 'Não vê nada por perto') + ' &rarr; decide ' + act + '.';
   }
+
+  // ---------- Interface ----------
+  function fmtTime(t) { return t < 3600 ? Math.max(1, Math.round(t / 60)) + ' min' : t < 86400 ? (t / 3600).toFixed(1).replace('.', ',') + ' h' : (t / 86400).toFixed(1).replace('.', ',') + ' dias'; }
   function ui(now) {
-    var s = Sim.stats(world), p = state.prot;
-    $('stGen').textContent = s.maxGen; $('stPop').textContent = s.pop;
-    $('stLife').textContent = s.avgLife ? Math.round(s.avgLife) + ' s' : '–';
-    $('stLifeBase').textContent = s.baseLife ? (s.avgLife >= s.baseLife ? '▲' : '▼') + ' no início: ' + Math.round(s.baseLife) + ' s' : 'medindo…';
-    $('stTime').textContent = fmtTime(s.t);
-    if (s.maxGen >= state.milestone + 10) { state.milestone = Math.floor(s.maxGen / 10) * 10; feed('dna', 'Nasceu a geração ' + s.maxGen, ''); }
-    if (s.baseLife && s.t > state.lifeNote) { state.lifeNote = s.t + 240; feed('trend', 'Vida média: ' + Math.round(s.avgLife) + ' s (no início: ' + Math.round(s.baseLife) + ' s)', s.avgLife >= s.baseLife ? 'good' : ''); }
-    if (p && p.alive) { $('brainCap').innerHTML = brainCaption(p); $('bnM').textContent = p.mut; $('bnG').textContent = p.gen; $('bnW').textContent = p.brain.length; }
-    else if (!p) $('brainCap').textContent = '';
+    var s = view.st, p = view.prot;
+    var live = view.connected && now - view.lastSnapPerf < 4000;
+    $('liveTx').textContent = live ? 'AO VIVO' : 'reconectando…';
+    $('live').classList.toggle('off', !live);
+    $('viewers').textContent = view.viewers || 1;
+    $('evChip').hidden = !view.ev; if (view.ev) $('evChip').textContent = 'Evento: ' + view.ev;
+    if (s) {
+      $('stGen').textContent = s.gen; $('stPop').textContent = s.pop;
+      $('stLife').textContent = s.avgLife ? s.avgLife + ' s' : '–';
+      $('stLifeBase').textContent = s.baseLife ? (s.avgLife >= s.baseLife ? '▲' : '▼') + ' no início: ' + s.baseLife + ' s' : 'medindo…';
+      $('stTime').textContent = fmtTime(view.t);
+    }
     if (!p) return;
+    if (p.alive) { $('brainCap').innerHTML = brainCaption(p); $('bnM').textContent = p.mut; $('bnG').textContent = p.gen; $('bnW').textContent = p.brain.length; }
     $('cName').textContent = p.name + ' #' + p.id;
-    $('cSub').textContent = parentLabel(p) + ' · ' + p.speed.toFixed(0) + ' de velocidade agora';
+    $('cSub').textContent = (p.gen <= 1 ? 'da primeira geração' : 'geração ' + p.gen) + ' · ' + Math.round(p.speed || 0) + ' de velocidade agora';
     $('cAge').textContent = Math.round(p.age) + ' s';
     var stage = p.age < Sim.MATURE ? 'filhote' : p.age < 200 ? 'adulta' : 'idosa';
     $('cStage').textContent = 'fase: ' + stage;
@@ -131,35 +147,42 @@
     $('cEat').textContent = p.eaten; $('cKids').textContent = p.kids; $('cEsc').textContent = p.escapes;
   }
 
-  // ---------- Loop ----------
+  // ---------- Desenho ----------
+  function interpolate(now) {
+    var k, c, i;
+    for (i = 0; i < view.list.length; i++) {
+      c = view.list[i]; k = Math.min(1, (now - c.t0) / view.interval);
+      c.x = c.fx + (c.tx - c.fx) * k; c.y = c.fy + (c.ty - c.fy) * k; c.a = angLerp(c.fa, c.ta, k);
+    }
+    for (i = 0; i < view.preds.length; i++) {
+      c = view.preds[i]; k = Math.min(1, (now - c.t0) / view.interval);
+      c.x = c.fx + (c.tx - c.fx) * k; c.y = c.fy + (c.ty - c.fy) * k; c.a = angLerp(c.fa, c.ta, k);
+    }
+    var p = view.prot;
+    if (p && p.alive && (!p.lastTrail || now - p.lastTrail > 140)) { p.lastTrail = now; p.trail.push(p.x, p.y); if (p.trail.length > 70) p.trail.splice(0, 2); }
+  }
+  function camera(dt) {
+    var p = view.prot, z = Math.max(W / 1000, H / 640, W / Sim.W, H / Sim.H);
+    cam.z += (z - cam.z) * Math.min(1, dt * 3);
+    if (p) { cam.x += (p.x - cam.x) * Math.min(1, dt * 3); cam.y += (p.y - cam.y) * Math.min(1, dt * 3); }
+    var hw = W / (2 * cam.z), hh = H / (2 * cam.z);
+    cam.x = hw * 2 >= Sim.W ? Sim.W / 2 : Math.max(hw, Math.min(Sim.W - hw, cam.x));
+    cam.y = hh * 2 >= Sim.H ? Sim.H / 2 : Math.max(hh, Math.min(Sim.H - hh, cam.y));
+  }
   function draw(ts) {
-    var p = state.prot;
+    var p = view.prot;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    Render.world(ctx, W, H, world, cam, p, ts / 1000, p && p.alive ? state.bubble : null);
+    Render.world(ctx, W, H, { patches: view.patches, foods: view.foods, creatures: view.list, preds: view.preds }, cam, p, ts / 1000, p && p.alive ? state.bubble : null);
   }
   function frame(ts) {
     requestAnimationFrame(frame);
     if (window.innerWidth !== W || window.innerHeight !== H) resize();
-    var dt = Math.min(.1, (ts - state.last) / 1000);
-    if (!state.last) dt = 0;
-    state.last = ts;
-    state.acc += dt * state.speed;
-    var n = 0;
-    while (state.acc >= DT && n < 80) { Sim.step(world, DT); state.acc -= DT; n++; }
-    if (n >= 80) state.acc = 0;
-    drain();
-
-    if (!state.prot) { var pk = Sim.pickProtagonist(world, null); if (pk.c) setProt(pk.c, null); }
-    if (state.next && ts >= state.switchAt) {
-      var nx = state.next; state.next = null; $('overlay').hidden = true;
-      var old = state.prot;
-      if (nx.c && nx.c.alive) setProt(nx.c, nx.descendant ? old : null);
-      else { var pk2 = Sim.pickProtagonist(world, null); setProt(pk2.c, null); }
-    }
-    var p = state.prot;
-    if (p && p.alive && !state.next) narrate(p, ts);
+    var dt = Math.min(.1, (ts - (state.lastFrame || ts)) / 1000); state.lastFrame = ts;
+    if (!view.connected) { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = '#02030a'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = 'rgba(205,218,255,.7)'; ctx.font = '600 18px Outfit, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('Conectando ao mundo…', W / 2, H / 2); return; }
+    interpolate(ts);
+    var p = view.prot;
+    if (p && p.alive && !state.overlay) narrate(p, ts);
     camera(dt);
-
     draw(ts);
     state.frame++;
     if (state.brainOn && state.frame % 2 === 0) Render.brain(bcv, p && p.alive ? p : null, ts / 1000);
@@ -167,12 +190,6 @@
   }
 
   // ---------- Controles ----------
-  document.querySelectorAll('[data-sp]').forEach(function (b) {
-    b.onclick = function () {
-      state.speed = parseInt(b.getAttribute('data-sp'), 10);
-      document.querySelectorAll('[data-sp]').forEach(function (x) { x.classList.toggle('on', x === b); });
-    };
-  });
   $('brainBig').onclick = function () { var big = $('brainBox').classList.toggle('big'); $('brainBig').textContent = big ? 'reduzir' : 'ampliar'; };
   $('brainToggle').onclick = function () {
     state.brainOn = !state.brainOn;
@@ -184,8 +201,12 @@
   try { if (localStorage.getItem('mv.intro')) $('intro').hidden = true; } catch (e) {}
   setTimeout(function () { $('intro').hidden = true; }, 30000);
 
-  for (var w0 = 0; w0 < 8 / DT; w0++) Sim.step(world, DT);
-  world.msgs.length = 0;
-  window.MV = { world: world, state: state };
+  // ---------- Conexão ----------
+  function connect() {
+    var es = new EventSource('/stream');
+    es.onmessage = function (e) { try { onSnap(JSON.parse(e.data), performance.now()); } catch (err) { if (window.console) console.error(err); } };
+  }
+  window.MV = { view: view, state: state, onSnap: onSnap };
+  if (!window.__NO_STREAM) connect();
   requestAnimationFrame(frame);
 })();

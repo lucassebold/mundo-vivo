@@ -12,6 +12,8 @@
     var f = function () { a = (a + 0x6D2B79F5) >>> 0; var t = a; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
     f.gauss = function () { var u = 1 - f(), v = f(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
     f.int = function (n) { return Math.floor(f() * n); };
+    f.getState = function () { return a; };
+    f.setState = function (v) { a = v >>> 0; };
     return f;
   }
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -299,6 +301,33 @@
     // prefere quem já está bem de energia e experiente: histórias mais longas de acompanhar
     pool.sort(function (a, b) { return (b.e + b.eaten * 4 + b.age) - (a.e + a.eaten * 4 + a.age); });
     return { c: pool[world.rnd.int(Math.max(1, Math.min(5, pool.length)))], descendant: false };
+  };
+
+  // ---------- Salvar e restaurar (para o servidor sobreviver a reinícios) ----------
+  var CFIELDS = ['id', 'parent', 'anc', 'gen', 'name', 'x', 'y', 'a', 'speed', 'e', 'age', 'g', 'brain', 'eaten', 'kids', 'cd', 'escapes', 'straight', 'lastAte', 'lastKid', 'lastEscape', 'mut'];
+  Sim.serialize = function (world) {
+    return {
+      v: 1, t: world.t, nextId: world.nextId, rng: world.rnd.getState(), nextEvent: world.nextEvent, predSpeed: world.predSpeed, basePreds: world.basePreds, predMsg: !!world.predMsg,
+      foodTarget: world.foodTarget, cap: world.cap, stats: world.stats, archive: world.archive, patches: world.patches,
+      foods: world.foods.map(function (f) { return [Math.round(f.x), Math.round(f.y)]; }),
+      preds: world.preds.map(function (p) { return { x: p.x, y: p.y, a: p.a, state: p.state, timer: p.timer, r: p.r }; }),
+      creatures: world.creatures.filter(function (c) { return c.alive; }).map(function (c) { var o = {}; CFIELDS.forEach(function (k) { o[k] = c[k]; }); return o; })
+    };
+  };
+  Sim.restore = function (d) {
+    var world = Sim.create(1, { pop: 0, preds: 0 });
+    world.rnd.setState(d.rng); world.t = d.t; world.nextId = d.nextId; world.nextEvent = d.nextEvent; world.predSpeed = d.predSpeed; world.basePreds = d.basePreds; world.predMsg = d.predMsg;
+    world.foodTarget = d.foodTarget; world.cap = d.cap; world.stats = d.stats; world.archive = d.archive; world.patches = d.patches;
+    world.foods = d.foods.map(function (f) { return { x: f[0], y: f[1], ph: world.rnd() * 6.28 }; });
+    world.preds = d.preds.map(function (p) { p.target = null; return p; });
+    world.creatures = d.creatures.map(function (o) {
+      var c = addCreature(world, o.x, o.y, o.brain, o.g, null);
+      world.stats.born--;
+      CFIELDS.forEach(function (k) { c[k] = o[k]; });
+      c.r = 6 * c.g.size * (.55 + .45 * Math.min(1, c.age / MATURE)); c.sx = c.x; c.sy = c.y;
+      return c;
+    });
+    return world;
   };
 
   Sim.spawn = function (world, brain, genes) { return addCreature(world, W / 2, H / 2, brain, genes, null); };
