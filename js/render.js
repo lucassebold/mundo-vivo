@@ -3,42 +3,72 @@
   var R = window.Render = {};
   var TAU = Math.PI * 2;
 
+  // Bactéria: corpo em bastonete com membrana, nucleoide, flagelo ondulante e receptores (quanto mais, maior a "visão")
   function creature(ctx, c, t, o) {
     o = o || {};
-    var r = c.r, sp = Math.min(1, c.speed / 110), wig = Math.sin(t * 12 + c.id) * (.25 + sp * .5);
-    var hunger = c.e < 35;
-    var col = 'hsl(' + c.g.hue + ',' + (hunger ? 25 : 68) + '%,' + (o.prot ? 66 : 56) + '%)';
+    var r = c.r, sp = Math.min(1, c.speed / 110), hunger = c.e < 35;
+    var hue = c.g.hue, sat = hunger ? 22 : 62, light = o.prot ? 62 : 54;
+    var L = r * 1.9, Wd = r * .95;
     ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.a);
     ctx.globalAlpha = o.alpha === undefined ? 1 : o.alpha;
-    // cauda
-    ctx.fillStyle = col; ctx.beginPath();
-    ctx.moveTo(-r * 1.3, 0); ctx.lineTo(-r * 2.5, wig * r * 1.2 - r * .5); ctx.lineTo(-r * 2.5, wig * r * 1.2 + r * .5); ctx.closePath(); ctx.fill();
-    // corpo
-    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.5, r, 0, 0, TAU); ctx.fill();
-    if (o.prot) { ctx.strokeStyle = '#ffd9a8'; ctx.lineWidth = 2; ctx.stroke(); }
-    // olhos: quanto maiores, maior a visão
-    var er = 1.2 + c.g.vision / 220 * 2.4;
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.arc(r * .75, -r * .45, er, 0, TAU); ctx.arc(r * .75, r * .45, er, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#10131c';
-    ctx.beginPath(); ctx.arc(r * .75 + er * .3, -r * .45, er * .5, 0, TAU); ctx.arc(r * .75 + er * .3, r * .45, er * .5, 0, TAU); ctx.fill();
+    // flagelo
+    ctx.strokeStyle = 'hsla(' + hue + ',' + sat + '%,' + (light + 10) + '%,.8)'; ctx.lineWidth = Math.max(1, r * .16); ctx.lineCap = 'round';
+    var amp = r * (.35 + sp * .75), ph = t * (9 + sp * 9) + c.id, k, fx, fy;
+    ctx.beginPath(); ctx.moveTo(-L, 0);
+    for (k = 1; k <= 8; k++) { fx = -L - k * r * .62; fy = Math.sin(ph - k * .85) * amp * (k / 8); ctx.lineTo(fx, fy); }
+    ctx.stroke();
+    // membrana (bastonete)
+    var rad = Wd;
+    ctx.beginPath(); ctx.moveTo(-L + rad, -Wd); ctx.lineTo(L - rad, -Wd); ctx.arc(L - rad, 0, Wd, -Math.PI / 2, Math.PI / 2); ctx.lineTo(-L + rad, Wd); ctx.arc(-L + rad, 0, Wd, Math.PI / 2, Math.PI * 1.5); ctx.closePath();
+    var g = ctx.createLinearGradient(0, -Wd, 0, Wd);
+    g.addColorStop(0, 'hsl(' + hue + ',' + sat + '%,' + (light + 12) + '%)'); g.addColorStop(1, 'hsl(' + hue + ',' + sat + '%,' + (light - 10) + '%)');
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = o.prot ? '#ffe2bd' : 'hsla(' + hue + ',' + sat + '%,' + (light + 22) + '%,.9)'; ctx.lineWidth = o.prot ? 2.2 : 1.2; ctx.stroke();
+    // nucleoide (DNA) e vacúolo
+    ctx.strokeStyle = 'hsla(' + hue + ',' + (sat + 10) + '%,' + (light - 28) + '%,.75)'; ctx.lineWidth = Math.max(.9, r * .13);
+    ctx.beginPath(); ctx.moveTo(-L * .45, 0);
+    for (k = 1; k <= 6; k++) ctx.lineTo(-L * .45 + k * L * .15, Math.sin(k * 1.9 + c.id) * Wd * .42);
+    ctx.stroke();
+    ctx.fillStyle = 'hsla(' + hue + ',40%,' + (light + 24) + '%,.55)'; ctx.beginPath(); ctx.arc(L * .42, 0, Wd * .28, 0, TAU); ctx.fill();
+    // receptores químicos na frente: mais e maiores = detecta de mais longe
+    var nr = 2 + Math.round(c.g.vision / 220 * 4);
+    ctx.strokeStyle = 'hsla(' + hue + ',' + sat + '%,' + (light + 20) + '%,.85)'; ctx.lineWidth = 1;
+    for (k = 0; k < nr; k++) {
+      var an = (k / (nr - 1) - .5) * 1.5, px = L - rad + Math.cos(an) * Wd, py = Math.sin(an) * Wd, ln = 1.5 + c.g.vision / 220 * 3.5;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + Math.cos(an) * ln, py + Math.sin(an) * ln); ctx.stroke();
+    }
     ctx.restore();
   }
 
+  // Ameba: corpo mole com pseudópodes que ondulam e núcleo visível
   function pred(ctx, p, t) {
-    var chase = p.state === 'chase', rest = p.state === 'rest';
-    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a);
-    if (chase) { ctx.shadowColor = '#ff3b3b'; ctx.shadowBlur = 24; }
-    ctx.globalAlpha = rest ? .55 : 1;
-    ctx.fillStyle = chase ? '#d12b2b' : '#7d1d2c';
+    var chase = p.state === 'chase', rest = p.state === 'rest', i, a, rr, n = 18;
+    ctx.save(); ctx.translate(p.x, p.y);
+    if (chase) { ctx.shadowColor = 'rgba(255,70,110,.9)'; ctx.shadowBlur = 26; }
+    ctx.globalAlpha = rest ? .62 : .95;
     ctx.beginPath();
-    var i, a, rr;
-    for (i = 0; i < 14; i++) { a = i / 14 * TAU; rr = i % 2 ? p.r * .95 : p.r * 1.55; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
-    ctx.closePath(); ctx.fill();
-    ctx.shadowBlur = 0; ctx.fillStyle = '#ffd1d1';
-    ctx.beginPath(); ctx.arc(p.r * .6, -p.r * .35, 2.6, 0, TAU); ctx.arc(p.r * .6, p.r * .35, 2.6, 0, TAU); ctx.fill();
+    for (i = 0; i <= n; i++) {
+      a = i / n * TAU; rr = p.r * (1.25 + .28 * Math.sin(a * 3 + t * (chase ? 5 : 2.2) + p.x * .01) + .18 * Math.sin(a * 5 - t * 3.1));
+      var px = Math.cos(a) * rr * 1.2, py = Math.sin(a) * rr;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    var gr = ctx.createRadialGradient(0, 0, 2, 0, 0, p.r * 1.9);
+    gr.addColorStop(0, chase ? 'rgba(255,120,150,.75)' : 'rgba(205,120,190,.65)'); gr.addColorStop(1, chase ? 'rgba(190,40,90,.55)' : 'rgba(120,50,130,.5)');
+    ctx.fillStyle = gr; ctx.fill();
+    ctx.shadowBlur = 0; ctx.strokeStyle = chase ? 'rgba(255,170,190,.9)' : 'rgba(230,170,230,.7)'; ctx.lineWidth = 1.6; ctx.stroke();
+    // núcleo e vacúolos
+    ctx.fillStyle = chase ? 'rgba(120,10,50,.85)' : 'rgba(70,20,90,.8)'; ctx.beginPath(); ctx.arc(p.r * .1, 0, p.r * .42, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.beginPath(); ctx.arc(-p.r * .6, p.r * .3, p.r * .22, 0, TAU); ctx.arc(p.r * .55, -p.r * .45, p.r * .17, 0, TAU); ctx.fill();
     ctx.restore();
   }
+
+  R.creature = creature; R.pred = pred;
+  R.nutrient = function (ctx, x, y, s, ph) {
+    ctx.fillStyle = 'rgba(190,255,130,.9)'; ctx.strokeStyle = 'rgba(230,255,190,.9)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (var q = 0; q < 6; q++) { var an = q / 6 * TAU + ph * .2; if (q === 0) ctx.moveTo(x + Math.cos(an) * s, y + Math.sin(an) * s); else ctx.lineTo(x + Math.cos(an) * s, y + Math.sin(an) * s); }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  };
 
   // cam: { x, y, z }; prot: criatura protagonista (ou null); bubble: emoji sobre ela
   R.world = function (ctx, w, h, world, cam, prot, t, bubble) {
@@ -64,11 +94,13 @@
     }
     ctx.strokeStyle = 'rgba(160,230,220,.35)'; ctx.lineWidth = 3; ctx.strokeRect(0, 0, Sim.W, Sim.H);
 
-    // comida
-    ctx.fillStyle = '#a6ff8f';
+    // nutrientes: moléculas de glicose (anel hexagonal)
+    ctx.fillStyle = 'rgba(190,255,130,.9)'; ctx.strokeStyle = 'rgba(230,255,190,.9)'; ctx.lineWidth = 1;
     for (i = 0; i < world.foods.length; i++) {
-      var f = world.foods[i], s = 3 + Math.sin(t * 3 + f.ph) * .6;
-      ctx.beginPath(); ctx.arc(f.x, f.y, s, 0, TAU); ctx.fill();
+      var f = world.foods[i], s = 4 + Math.sin(t * 3 + f.ph) * .5, q;
+      ctx.beginPath();
+      for (q = 0; q < 6; q++) { var an = q / 6 * TAU + f.ph * .2; if (q === 0) ctx.moveTo(f.x + Math.cos(an) * s, f.y + Math.sin(an) * s); else ctx.lineTo(f.x + Math.cos(an) * s, f.y + Math.sin(an) * s); }
+      ctx.closePath(); ctx.fill(); ctx.stroke();
     }
 
     // o que a protagonista enxerga
@@ -115,7 +147,7 @@
 
   // Rede neural da protagonista: neurônios brilham, sinais viajam pelas conexões
   var IN_LABELS = ['frente', 'lado', 'perto', 'frente', 'lado', 'perto', 'energia', 'parede'];
-  var GROUP = [{ a: 0, b: 2, t: 'COMIDA', icon: 'leaf', col: '#8dffb0' }, { a: 3, b: 5, t: 'PREDADOR', icon: 'alert', col: '#ff6b6b' }, { a: 6, b: 6, t: 'ENERGIA', icon: 'battery', col: '#ffb070' }, { a: 7, b: 7, t: 'PAREDE', icon: 'wall', col: '#a9b6d8' }];
+  var GROUP = [{ a: 0, b: 2, t: 'NUTRIENTE', icon: 'leaf', col: '#8dffb0' }, { a: 3, b: 5, t: 'AMEBA', icon: 'alert', col: '#ff6b6b' }, { a: 6, b: 6, t: 'ENERGIA', icon: 'battery', col: '#ffb070' }, { a: 7, b: 7, t: 'BORDA', icon: 'wall', col: '#a9b6d8' }];
   function bez(xa, ya, xb, yb, p) {
     var cx = xa + (xb - xa) * .5, u = 1 - p;
     return [u * u * u * xa + 3 * u * u * p * cx + 3 * u * p * p * cx + p * p * p * xb, u * u * u * ya + 3 * u * u * p * ya + 3 * u * p * p * yb + p * p * p * yb];

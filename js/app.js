@@ -27,23 +27,23 @@
   }
 
   // ---------- Mensagens vindas do servidor ----------
-  var CAUSE = { fome: 'de fome', predador: 'pega por um predador', velhice: 'de velhice, depois de uma vida longa' };
+  var CAUSE = { fome: 'por falta de nutrientes', predador: 'engolida por uma ameba', velhice: 'por senescência, depois de uma vida longa' };
   function onMsg(m) {
     if (m.k === 'prot') {
       $('overlay').hidden = true; state.overlay = false; state.sayPri = -1; state.sayUntil = 0;
-      feed('dna', 'Agora você acompanha ' + m.name + (m.from ? ', descendente de ' + m.from : '') + ' (' + (m.gen <= 1 ? 'da primeira geração' : 'geração ' + m.gen) + ')', 'good');
+      feed('dna', 'Agora você acompanha ' + m.name + ' #' + m.id + (m.from ? ', descendente de ' + m.from : '') + ' (' + (m.gen <= 1 ? 'da primeira geração' : 'geração ' + m.gen) + ')', 'good');
     } else if (m.k === 'death') {
       var o = $('overlay');
-      o.innerHTML = '<h2>' + Icons.svg('skull', 28, Icons.COLOR.danger) + ' ' + m.name + ' morreu</h2><p>' + (m.cause === 'predador' ? 'Foi pega por um predador' : m.cause === 'fome' ? 'Morreu de fome' : 'Morreu de velhice, depois de uma vida longa') + ' depois de ' + m.age + ' s de vida.</p>' +
-        '<p>Comeu ' + m.eaten + ' vezes · ' + m.kids + ' filhote' + (m.kids === 1 ? '' : 's') + ' · ' + m.escapes + ' fuga' + (m.escapes === 1 ? '' : 's') + '</p>' +
-        '<div class="next">' + (m.desc ? 'Sua linhagem continua com ' + m.nextName + '…' : 'Procurando outra criatura para acompanhar…') + '</div>';
+      o.innerHTML = '<h2>' + Icons.svg('skull', 28, Icons.COLOR.danger) + ' ' + m.name + ' morreu</h2><p>' + (m.cause === 'predador' ? 'Foi engolida por uma ameba' : m.cause === 'fome' ? 'Morreu por falta de nutrientes' : 'Morreu por senescência, depois de uma vida longa') + ' depois de ' + m.age + ' s de vida.</p>' +
+        '<p>Absorveu ' + m.eaten + ' nutrientes · ' + m.kids + ' divisão' + (m.kids === 1 ? '' : 'ões') + ' celular' + (m.kids === 1 ? '' : 'es') + ' · ' + m.escapes + ' fuga' + (m.escapes === 1 ? '' : 's') + '</p>' +
+        '<div class="next">' + (m.desc ? 'Sua linhagem continua com ' + m.nextName + '…' : 'Procurando outra bactéria para acompanhar…') + '</div>';
       o.hidden = false; state.overlay = true;
       feed('skull', m.name + ' morreu ' + (CAUSE[m.cause] || ''), 'bad');
-    } else if (m.k === 'birth') feed('heart', m.name + ' teve um filhote', 'good');
-    else if (m.k === 'escape') feed('escape', m.name + ' escapou de um predador', 'good');
+    } else if (m.k === 'birth') feed('heart', m.name + ' se dividiu: nasceu uma célula-filha', 'good');
+    else if (m.k === 'escape') feed('escape', m.name + ' escapou de uma ameba', 'good');
     else if (m.k === 'world') feed(m.icon || 'globe', m.text, 'world');
     else if (m.k === 'gen') feed('dna', 'Nasceu a geração ' + m.gen, '');
-    else if (m.k === 'life') feed('trend', 'Vida média: ' + m.avg + ' s (no início: ' + m.base + ' s)', m.avg >= m.base ? 'good' : '');
+    else if (m.k === 'life') feed('trend', 'Vida média das células: ' + m.avg + ' s (no início: ' + m.base + ' s)', m.avg >= m.base ? 'good' : '');
   }
 
   // ---------- Recebendo snapshots ----------
@@ -90,17 +90,17 @@
   // ---------- Narração (descreve o estado real da criatura) ----------
   function narrate(c, now) {
     var t = view.t, r, C = Icons.COLOR;
-    if (c.near.pred && c.near.pred.d < 120) r = { pri: 5, i: 'alert', c: C.danger, s: 'Perigo! Tem um predador perto dela.' };
-    else if (t - c.lastEscape < 3) r = { pri: 5, i: 'escape', c: C.good, s: 'Escapou do predador por pouco!' };
-    else if (t - c.lastKid < 3.5) r = { pri: 4, i: 'heart', c: C.danger, s: 'Teve um filhote! São ' + c.kids + ' até agora.' };
-    else if (t - c.lastAte < 1.6) r = { pri: 3, i: 'leaf', c: C.good, s: 'Comeu! Energia em ' + Math.round(c.e / Sim.MAXE * 100) + '%.' };
-    else if (c.e < 35) r = { pri: 2, i: 'battery', c: C.accent, s: 'Quase sem energia. Precisa achar comida logo.' };
-    else if (c.straight < .35 && c.age > 8) r = { pri: 1, i: 'spiral', c: C.info, s: 'Dando voltas: o cérebro dela ainda não aprendeu a seguir reto até a comida.' };
-    else if (c.near.food && c.inp[0] > .5 && c.thrust > .25) r = { pri: 1, i: 'target', c: C.gold, s: 'Viu comida e está indo atrás.' };
-    else if (c.near.food && c.inp[0] < -.3) r = { pri: 1, i: 'away', c: C.muted, s: 'Tinha comida por perto, mas foi pro outro lado.' };
-    else if (c.age < Sim.MATURE) r = { pri: 0, i: 'sprout', c: C.good, s: 'Ainda é filhote: crescendo e aprendendo a achar comida.' };
-    else if (c.age > 200) r = { pri: 0, i: 'hourglass', c: C.muted, s: 'Já está velha: mais lenta, mas ainda procurando comida.' };
-    else r = { pri: 0, i: 'search', c: C.muted, s: 'Explorando em busca de comida.' };
+    if (c.near.pred && c.near.pred.d < 120) r = { pri: 5, i: 'alert', c: C.danger, s: 'Perigo! Há uma ameba perto dela.' };
+    else if (t - c.lastEscape < 3) r = { pri: 5, i: 'escape', c: C.good, s: 'Escapou da ameba por pouco!' };
+    else if (t - c.lastKid < 3.5) r = { pri: 4, i: 'heart', c: C.danger, s: 'Dividiu-se! Já são ' + c.kids + ' células-filhas.' };
+    else if (t - c.lastAte < 1.6) r = { pri: 3, i: 'leaf', c: C.good, s: 'Absorveu nutrientes! Energia em ' + Math.round(c.e / Sim.MAXE * 100) + '%.' };
+    else if (c.e < 35) r = { pri: 2, i: 'battery', c: C.accent, s: 'Quase sem energia. Precisa achar nutrientes logo.' };
+    else if (c.straight < .35 && c.age > 8) r = { pri: 1, i: 'spiral', c: C.info, s: 'Dando voltas: o cérebro dela ainda não aprendeu a seguir reto até os nutrientes.' };
+    else if (c.near.food && c.inp[0] > .5 && c.thrust > .25) r = { pri: 1, i: 'target', c: C.gold, s: 'Sentiu nutrientes e está indo atrás.' };
+    else if (c.near.food && c.inp[0] < -.3) r = { pri: 1, i: 'away', c: C.muted, s: 'Havia nutrientes por perto, mas ela foi pro outro lado.' };
+    else if (c.age < Sim.MATURE) r = { pri: 0, i: 'sprout', c: C.good, s: 'Célula jovem: crescendo e aprendendo a achar nutrientes.' };
+    else if (c.age > 200) r = { pri: 0, i: 'hourglass', c: C.muted, s: 'Já em senescência: mais lenta, mas ainda procurando nutrientes.' };
+    else r = { pri: 0, i: 'search', c: C.muted, s: 'Explorando o meio em busca de nutrientes.' };
     if (r.pri >= state.sayPri || now > state.sayUntil) {
       if (r.s !== $('cSay').textContent) { $('cSay').textContent = r.s; state.sayUntil = now + 1900; }
       state.sayPri = r.pri; state.bubble = { i: r.i, c: r.c }; $('cAvatar').innerHTML = Icons.svg(r.i, 26, r.c);
@@ -111,11 +111,11 @@
   function dirText(fwd, side) { return fwd > .55 ? 'à frente' : fwd < -.55 ? 'atrás' : side > 0 ? 'à direita' : 'à esquerda'; }
   function brainCaption(c) {
     var seen = [];
-    if (c.near.pred) seen.push('<b>predador ' + dirText(c.inp[3], c.inp[4]) + '</b>');
-    if (c.near.food) seen.push('<b>comida ' + dirText(c.inp[0], c.inp[1]) + '</b>');
+    if (c.near.pred) seen.push('<b>ameba ' + dirText(c.inp[3], c.inp[4]) + '</b>');
+    if (c.near.food) seen.push('<b>nutriente ' + dirText(c.inp[0], c.inp[1]) + '</b>');
     var turn = c.out[0], acc = Math.round((c.out[1] + 1) / 2 * 100);
     var act = (Math.abs(turn) < .15 ? '<b>seguir reto</b>' : '<b>virar para a ' + (turn > 0 ? 'direita' : 'esquerda') + '</b>') + ' e <b>' + (acc > 66 ? 'acelerar forte' : acc > 33 ? 'andar devagar' : 'quase parar') + '</b>';
-    return (seen.length ? 'Vê ' + seen.join(' e ') : 'Não vê nada por perto') + ' &rarr; decide ' + act + '.';
+    return (seen.length ? 'Sente ' + seen.join(' e ') : 'Não vê nada por perto') + ' &rarr; decide ' + act + '.';
   }
 
   // ---------- Interface ----------
@@ -136,12 +136,13 @@
     if (!p) return;
     if (p.alive) { $('brainCap').innerHTML = brainCaption(p); $('bnM').textContent = p.mut; $('bnG').textContent = p.gen; $('bnW').textContent = p.brain.length; }
     $('cName').textContent = p.name + ' #' + p.id;
+    $('cGenus').textContent = (window.GENUS && GENUS[p.name]) ? 'Gênero real: ' + GENUS[p.name] : '';
     $('cSub').textContent = (p.gen <= 1 ? 'da primeira geração' : 'geração ' + p.gen) + ' · ' + Math.round(p.speed || 0) + ' de velocidade agora';
     $('cAge').textContent = Math.round(p.age) + ' s';
-    var stage = p.age < Sim.MATURE ? 'filhote' : p.age < 200 ? 'adulta' : 'idosa';
+    var stage = p.age < Sim.MATURE ? 'jovem' : p.age < 200 ? 'madura' : 'senescente';
     $('cStage').textContent = 'fase: ' + stage;
     if (state.stageOf !== p.id) { state.stageOf = p.id; state.stage = stage; }
-    else if (stage !== state.stage) { state.stage = stage; feed(stage === 'adulta' ? 'cake' : 'hourglass', stage === 'adulta' ? p.name + ' chegou à vida adulta e já pode ter filhotes' : p.name + ' está envelhecendo', ''); }
+    else if (stage !== state.stage) { state.stage = stage; feed(stage === 'madura' ? 'cake' : 'hourglass', stage === 'madura' ? p.name + ' amadureceu e já pode se dividir' : p.name + ' entrou em senescência', ''); }
     var pct = Math.max(0, Math.min(1, p.e / Sim.MAXE)) * 100;
     $('cEnergy').style.width = pct + '%'; $('cEnergyTx').textContent = 'energia ' + Math.round(pct) + '%';
     $('cEat').textContent = p.eaten; $('cKids').textContent = p.kids; $('cEsc').textContent = p.escapes;
@@ -188,6 +189,40 @@
     if (state.brainOn && state.frame % 2 === 0) Render.brain(bcv, p && p.alive ? p : null, ts / 1000);
     if (ts - state.lastUi > 200) { state.lastUi = ts; ui(ts); }
   }
+
+  // ---------- Legenda ----------
+  var legendOn = true;
+  function drawLegend(t) {
+    var cs = document.querySelectorAll('#legendBody canvas'), i, k, g, c2, cx = 42, cy = 24;
+    for (i = 0; i < cs.length; i++) {
+      k = cs[i].getAttribute('data-k'); c2 = cs[i].getContext('2d'); c2.clearRect(0, 0, 84, 48);
+      var bact = { x: cx, y: cy, a: .15, r: 6.5, speed: 60, e: 100, id: 3, g: { hue: 170, vision: 130 } };
+      if (k === 'bact') Render.creature(c2, bact, t);
+      else if (k === 'prot') {
+        g = c2.createRadialGradient(cx, cy, 2, cx, cy, 26); g.addColorStop(0, 'rgba(255,200,140,.5)'); g.addColorStop(1, 'rgba(255,176,112,0)');
+        c2.fillStyle = g; c2.beginPath(); c2.arc(cx, cy, 26, 0, 6.3); c2.fill(); Render.creature(c2, bact, t, { prot: true });
+      } else if (k === 'nutri') { Render.nutrient(c2, 28, 24, 6, 0); Render.nutrient(c2, 52, 16, 5, 1); Render.nutrient(c2, 58, 32, 5, 2); }
+      else if (k === 'ameba') Render.pred(c2, { x: cx, y: cy, r: 8, state: 'wander' }, t);
+      else if (k === 'range') {
+        c2.strokeStyle = 'rgba(255,217,168,.45)'; c2.setLineDash([4, 4]); c2.lineWidth = 1.4; c2.beginPath(); c2.arc(cx, cy, 21, 0, 6.3); c2.stroke(); c2.setLineDash([]);
+        c2.strokeStyle = 'rgba(166,255,143,.8)'; c2.beginPath(); c2.moveTo(cx, cy); c2.lineTo(cx + 17, cy - 9); c2.stroke();
+        c2.strokeStyle = 'rgba(255,90,90,.85)'; c2.beginPath(); c2.moveTo(cx, cy); c2.lineTo(cx - 14, cy + 11); c2.stroke();
+        Render.creature(c2, { x: cx, y: cy, a: 0, r: 4.5, speed: 0, e: 100, id: 3, g: { hue: 170, vision: 130 } }, t);
+        Render.nutrient(c2, cx + 17, cy - 9, 3.5, 0);
+      } else if (k === 'div') {
+        Render.creature(c2, { x: 24, y: 24, a: 0, r: 5, speed: 0, e: 100, id: 3, g: { hue: 170, vision: 130 } }, t);
+        c2.fillStyle = 'rgba(255,255,255,.55)'; c2.font = '700 14px Outfit, sans-serif'; c2.textAlign = 'center'; c2.fillText('→', 42, 28);
+        Render.creature(c2, { x: 62, y: 15, a: -.2, r: 4, speed: 0, e: 100, id: 4, g: { hue: 175, vision: 130 } }, t);
+        Render.creature(c2, { x: 62, y: 33, a: .2, r: 4, speed: 0, e: 100, id: 5, g: { hue: 165, vision: 130 } }, t);
+      }
+    }
+  }
+  setInterval(function () { if (legendOn) drawLegend(performance.now() / 1000); }, 90);
+  $('legendBtn').onclick = function () {
+    legendOn = !legendOn; $('legend').classList.toggle('min', !legendOn); $('legendArrow').textContent = legendOn ? 'ocultar' : 'mostrar';
+    try { localStorage.setItem('mv.legend', legendOn ? '1' : '0'); } catch (e) {}
+  };
+  try { if (localStorage.getItem('mv.legend') === '0') { legendOn = false; $('legend').classList.add('min'); $('legendArrow').textContent = 'mostrar'; } } catch (e) {}
 
   // ---------- Controles ----------
   $('brainBig').onclick = function () { var big = $('brainBox').classList.toggle('big'); $('brainBig').textContent = big ? 'reduzir' : 'ampliar'; };
