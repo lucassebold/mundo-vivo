@@ -61,13 +61,14 @@ function directorTick(now) {
 
 // ---------- Snapshot compacto ----------
 function r1(v) { return Math.round(v * 10) / 10; }
+function r2(v) { return Math.round(v * 100) / 100; }
 var seq = 0, lastMilestone = world.stats.maxGen, lastLifeNote = world.t;
 function snapshot() {
   var s = Sim.stats(world), p = dir.prot, i, c, pr = null;
   var cs = [];
   for (i = 0; i < world.creatures.length; i++) {
     c = world.creatures[i];
-    cs.push([c.id, Math.round(c.x), Math.round(c.y), Math.round(c.a * 100) / 100, r1(c.r), Math.round(c.g.hue), Math.round(c.g.vision), Math.round(c.speed), Math.round(c.e), Math.round(c.age)]);
+    cs.push([c.id, r1(c.x), r1(c.y), r2(c.a), r1(c.r), Math.round(c.g.hue), Math.round(c.g.vision), Math.round(c.speed), Math.round(c.e), Math.round(c.age)]);
   }
   if (p) {
     pr = { id: p.id, name: p.name, alive: p.alive, gen: p.gen, age: r1(p.age), e: Math.round(p.e), eaten: p.eaten, kids: p.kids, escapes: p.escapes, mut: p.mut, straight: Math.round(p.straight * 100) / 100,
@@ -80,11 +81,11 @@ function snapshot() {
   if (s.baseLife && world.t > lastLifeNote + 240) { lastLifeNote = world.t; extra.push({ k: 'life', avg: Math.round(s.avgLife), base: Math.round(s.baseLife) }); }
   var msgs = dir.out.concat(extra); dir.out = [];
   return {
-    seq: ++seq, t: Math.round(world.t * 10) / 10, viewers: clients.length,
+    seq: ++seq, t: Math.round(world.t * 1000) / 1000, sp: SIM_SPEED, viewers: clients.length,
     st: { pop: s.pop, gen: s.maxGen, avgLife: Math.round(s.avgLife), baseLife: s.baseLife ? Math.round(s.baseLife) : null, deaths: s.deaths },
     ev: world.event ? world.event.name : null,
     cs: cs, fs: world.foods.map(function (f) { return [Math.round(f.x), Math.round(f.y)]; }),
-    ps: world.preds.map(function (q) { return [Math.round(q.x), Math.round(q.y), Math.round(q.a * 100) / 100, q.state === 'chase' ? 1 : q.state === 'rest' ? 2 : 0]; }),
+    ps: world.preds.map(function (q) { return [q.id, r1(q.x), r1(q.y), r2(q.a), q.state === 'chase' ? 1 : q.state === 'rest' ? 2 : 0]; }),
     pt: world.patches.map(function (q) { return [Math.round(q.x), Math.round(q.y), Math.round(q.r)]; }),
     pr: pr, msgs: msgs
   };

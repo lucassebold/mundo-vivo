@@ -4,7 +4,7 @@
   var cv = $('world'), ctx = cv.getContext('2d'), bcv = $('brain');
   var W = 0, H = 0, dpr = 1;
   var cam = { x: Sim.W / 2, y: Sim.H / 2, z: 1 };
-  var view = { t: 0, snapAt: 0, interval: 125, creatures: {}, list: [], foods: [], preds: [], patches: [], prot: null, st: null, ev: null, lastSnapPerf: 0, connected: false };
+  var view = { t: 0, sp: 1, snapAt: 0, creatures: {}, list: [], foods: [], preds: [], patches: [], prot: null, st: null, ev: null, lastSnapPerf: 0, connected: false };
   var state = { brainOn: true, sayPri: -1, sayUntil: 0, bubble: { i: 'search', c: '#a9b6d8' }, frame: 0, lastUi: 0, stageOf: null, stage: null, overlay: false, lastFrame: 0 };
 
   document.querySelectorAll('[data-ic]').forEach(function (el) { el.insertAdjacentHTML('afterbegin', Icons.svg(el.getAttribute('data-ic'), 15, Icons.COLOR.accent)); });
@@ -49,28 +49,37 @@
   // ---------- Recebendo snapshots ----------
   function angLerp(a, b, k) { var d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return a + d * k; }
 
+  // Os snapshots chegam ~7x por segundo; o movimento é reproduzido com um pequeno atraso fixo (DELAY),
+  // interpolando entre dois snapshots reais. Assim não há paradas nem trancos quando a rede oscila.
+  var snaps = [], clock = { off: null }, DELAY = .45;
+
   function onSnap(s, now) {
     var first = !view.connected;
     view.connected = true;
-    if (view.lastSnapPerf) view.interval = Math.max(60, Math.min(400, view.interval * .8 + (now - view.lastSnapPerf) * .2));
-    view.lastSnapPerf = now; view.snapAt = now; view.t = s.t; view.st = s.st; view.ev = s.ev; view.viewers = s.viewers;
+    if (snaps.length && s.t < snaps[snaps.length - 1].t - 1) { snaps.length = 0; clock.off = null; }   // servidor reiniciou
+    view.lastSnapPerf = now; view.t = s.t; view.st = s.st; view.ev = s.ev; view.viewers = s.viewers; view.sp = s.sp || 1;
 
-    var seen = {}, i, a, c, id;
+    var map = {}, pm = {}, i, a, c, id;
+    for (i = 0; i < s.cs.length; i++) map[s.cs[i][0]] = s.cs[i];
+    for (i = 0; i < s.ps.length; i++) pm[s.ps[i][0]] = s.ps[i];
+    snaps.push({ t: s.t, map: map, ps: pm, fs: s.fs });
+    if (snaps.length > 10) snaps.shift();
+
+    // relógio de reprodução: acompanha as chegadas mais cedo (o mais fiel ao servidor) e ignora atrasos pontuais
+    var cand = s.t - (now / 1000) * view.sp - DELAY * view.sp;
+    if (clock.off === null) clock.off = cand; else clock.off += (cand - clock.off) * (cand > clock.off ? .15 : .01);
+
     for (i = 0; i < s.cs.length; i++) {
-      a = s.cs[i]; seen[a[0]] = 1; c = view.creatures[a[0]];
-      if (!c) { c = view.creatures[a[0]] = { id: a[0], x: a[1], y: a[2], a: a[3], fx: a[1], fy: a[2], fa: a[3], alive: true, trail: [], near: { food: null, pred: null }, g: {}, inp: [0, 0, 0, 0, 0, 0, 0, 0], hid: [], out: [0, 0], brain: [] }; }
-      c.fx = c.x; c.fy = c.y; c.fa = c.a; c.tx = a[1]; c.ty = a[2]; c.ta = a[3]; c.t0 = now;
+      a = s.cs[i]; c = view.creatures[a[0]];
+      if (!c) c = view.creatures[a[0]] = { id: a[0], x: a[1], y: a[2], a: a[3], alive: true, trail: [], near: { food: null, pred: null }, g: {}, inp: [0, 0, 0, 0, 0, 0, 0, 0], hid: [], out: [0, 0], brain: [] };
       c.r = a[4]; c.g.hue = a[5]; c.g.vision = a[6]; c.speed = a[7]; c.e = a[8]; c.age = a[9];
     }
-    for (id in view.creatures) if (!seen[id]) { if (view.prot && view.prot.id === +id) view.prot.alive = false; delete view.creatures[id]; }
+    for (id in view.creatures) if (!map[id]) { if (view.prot && view.prot.id === +id) view.prot.alive = false; delete view.creatures[id]; }
     view.list = []; for (id in view.creatures) view.list.push(view.creatures[id]);
 
-    view.foods = s.fs.map(function (f) { return { x: f[0], y: f[1], ph: (f[0] * 13 + f[1] * 7) % 6.28 }; });
-    var oldPreds = view.preds;
-    view.preds = s.ps.map(function (p, k) {
-      var o = oldPreds[k];
-      return { x: o ? o.x : p[0], y: o ? o.y : p[1], a: o ? o.a : p[2], fx: o ? o.x : p[0], fy: o ? o.y : p[1], fa: o ? o.a : p[2], tx: p[0], ty: p[1], ta: p[2], t0: now, r: 13, state: p[3] === 1 ? 'chase' : p[3] === 2 ? 'rest' : 'wander' };
-    });
+    // amebas (por id, para interpolar certo mesmo quando entram e saem)
+    var oldP = {}; view.preds.forEach(function (q) { oldP[q.id] = q; });
+    view.preds = s.ps.map(function (p) { return oldP[p[0]] || { id: p[0], x: p[1], y: p[2], a: p[3], r: 13, state: 'wander' }; });
     view.patches = s.pt.map(function (p) { return { x: p[0], y: p[1], r: p[2] }; });
 
     var pr = s.pr;
@@ -149,23 +158,46 @@
   }
 
   // ---------- Desenho ----------
+  var foodSrc = null;
   function interpolate(now) {
-    var k, c, i;
-    for (i = 0; i < view.list.length; i++) {
-      c = view.list[i]; k = Math.min(1, (now - c.t0) / view.interval);
-      c.x = c.fx + (c.tx - c.fx) * k; c.y = c.fy + (c.ty - c.fy) * k; c.a = angLerp(c.fa, c.ta, k);
+    var n = snaps.length;
+    if (!n || clock.off === null) return;
+    var T = now / 1000 * view.sp + clock.off, lo = 0, hi, i, k, A, B, c, span;
+    for (i = 0; i < n; i++) if (snaps[i].t <= T) lo = i;
+    hi = Math.min(n - 1, lo + 1);
+    var sa = snaps[lo], sb = snaps[hi];
+    span = sb.t - sa.t;
+    k = span > 1e-6 ? Math.max(0, Math.min(1, (T - sa.t) / span)) : 0;
+    // sem snapshot mais novo (rede travou): extrapola um pouco, em vez de parar
+    var ex = 0, prev = null;
+    if (lo === n - 1 && n > 1) { prev = snaps[n - 2]; ex = Math.min(.4 * view.sp, Math.max(0, T - sa.t)); }
+
+    function place(o, A, B, ia, ib) {
+      var x, y, ang;
+      if (A && B) { x = A[ia] + (B[ia] - A[ia]) * k; y = A[ia + 1] + (B[ia + 1] - A[ia + 1]) * k; ang = angLerp(A[ia + 2], B[ia + 2], k); }
+      else { var S = B || A; if (!S) return; x = S[ia]; y = S[ia + 1]; ang = S[ia + 2]; }
+      o.x = x; o.y = y; o.a = ang;
     }
-    for (i = 0; i < view.preds.length; i++) {
-      c = view.preds[i]; k = Math.min(1, (now - c.t0) / view.interval);
-      c.x = c.fx + (c.tx - c.fx) * k; c.y = c.fy + (c.ty - c.fy) * k; c.a = angLerp(c.fa, c.ta, k);
+    for (i = 0; i < view.list.length; i++) {
+      c = view.list[i]; A = sa.map[c.id]; B = sb.map[c.id];
+      if (prev && B && prev.map[c.id] && sb.t > prev.t) {
+        var P = prev.map[c.id], f = ex / (sb.t - prev.t);
+        c.x = B[1] + (B[1] - P[1]) * f; c.y = B[2] + (B[2] - P[2]) * f; c.a = B[3];
+      } else place(c, A, B, 1, 1);
+    }
+    for (i = 0; i < view.preds.length; i++) { c = view.preds[i]; place(c, sa.ps[c.id], sb.ps[c.id], 1, 1); var st = (sb.ps[c.id] || sa.ps[c.id]); if (st) c.state = st[4] === 1 ? 'chase' : st[4] === 2 ? 'rest' : 'wander'; }
+    if (foodSrc !== sa) {
+      foodSrc = sa;
+      view.foods = sa.fs.map(function (f) { return { x: f[0], y: f[1], ph: (f[0] * 13 + f[1] * 7) % 6.28 }; });
     }
     var p = view.prot;
     if (p && p.alive && (!p.lastTrail || now - p.lastTrail > 140)) { p.lastTrail = now; p.trail.push(p.x, p.y); if (p.trail.length > 70) p.trail.splice(0, 2); }
   }
   function camera(dt) {
     var p = view.prot, z = Math.max(W / 1000, H / 640, W / Sim.W, H / Sim.H);
-    cam.z += (z - cam.z) * Math.min(1, dt * 3);
-    if (p) { cam.x += (p.x - cam.x) * Math.min(1, dt * 3); cam.y += (p.y - cam.y) * Math.min(1, dt * 3); }
+    var kc = 1 - Math.exp(-dt * 3.2);
+    cam.z += (z - cam.z) * kc;
+    if (p) { cam.x += (p.x - cam.x) * kc; cam.y += (p.y - cam.y) * kc; }
     var hw = W / (2 * cam.z), hh = H / (2 * cam.z);
     cam.x = hw * 2 >= Sim.W ? Sim.W / 2 : Math.max(hw, Math.min(Sim.W - hw, cam.x));
     cam.y = hh * 2 >= Sim.H ? Sim.H / 2 : Math.max(hh, Math.min(Sim.H - hh, cam.y));

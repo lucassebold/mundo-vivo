@@ -68,7 +68,7 @@
     var world = {
       rnd: rnd, t: 0, nextId: 1, foods: [], preds: [], creatures: [], msgs: [], archive: [],
       patches: [], event: null, nextEvent: 140 + rnd() * 100, predSpeed: 90, predTimer: 0,
-      stats: { born: 0, deaths: 0, life: [], base: null, maxGen: 0 }, foodTarget: 190, cap: CAP
+      nextPredId: 1, stats: { born: 0, deaths: 0, life: [], base: null, maxGen: 0 }, foodTarget: 190, cap: CAP
     };
     for (i = 0; i < 4; i++) world.patches.push({ x: 150 + rnd() * (W - 300), y: 120 + rnd() * (H - 240), ph: rnd() * 6.28, r: 70 + rnd() * 30 });
     for (i = 0; i < world.foodTarget; i++) spawnFood(world);
@@ -88,7 +88,7 @@
   }
   function addPred(world) {
     var rnd = world.rnd;
-    world.preds.push({ x: rnd() * W, y: rnd() * H, a: rnd() * 6.28, state: 'wander', timer: 0, target: null, r: 13 });
+    world.preds.push({ id: world.nextPredId++, x: rnd() * W, y: rnd() * H, a: rnd() * 6.28, state: 'wander', timer: 0, target: null, r: 13 });
   }
   function addCreature(world, x, y, brain, genes, parent) {
     var anc = parent ? [parent.id].concat(parent.anc).slice(0, 5) : [];
@@ -169,7 +169,8 @@
       c.age += dt; c.cd -= dt;
       sense(world, c);
       think(c);
-      c.turn = c.out[0] * 4; c.thrust = (c.out[1] + 1) / 2;
+      c.turn += (c.out[0] * 4 - c.turn) * (1 - Math.exp(-dt / .15));
+      c.thrust += ((c.out[1] + 1) / 2 - c.thrust) * (1 - Math.exp(-dt / .3));
       c.a += c.turn * dt;
       c.r = 6 * c.g.size * (.55 + .45 * Math.min(1, c.age / MATURE));
       speed = c.thrust * c.g.speed * (1 - .3 * clamp((c.age - 200) / 100, 0, 1)); c.speed = speed;
@@ -178,7 +179,7 @@
       if (c.y < 0) { c.y = 0; c.a = -c.a; } else if (c.y > H) { c.y = H; c.a = -c.a; }
       c.pathAcc += speed * dt; c.st += dt;
       if (c.st >= 3) { var dd = Math.sqrt((c.x - c.sx) * (c.x - c.sx) + (c.y - c.sy) * (c.y - c.sy)); if (c.pathAcc > 25) c.straight = c.straight * .5 + .5 * Math.min(1, dd / c.pathAcc); c.sx = c.x; c.sy = c.y; c.pathAcc = 0; c.st = 0; }
-      c.e -= Math.abs(c.out[0]) * TURN_COST * dt;
+      c.e -= Math.abs(c.turn) / 4 * TURN_COST * dt;
       c.e -= (2 + 2.2 * c.g.size + .01 * c.g.vision + 7 * Math.pow(speed / 100, 2) * c.g.size) * METAB * dt;
 
       // comer
@@ -311,7 +312,7 @@
       v: 1, t: world.t, nextId: world.nextId, rng: world.rnd.getState(), nextEvent: world.nextEvent, predSpeed: world.predSpeed, basePreds: world.basePreds, predMsg: !!world.predMsg,
       foodTarget: world.foodTarget, cap: world.cap, stats: world.stats, archive: world.archive, patches: world.patches,
       foods: world.foods.map(function (f) { return [Math.round(f.x), Math.round(f.y)]; }),
-      preds: world.preds.map(function (p) { return { x: p.x, y: p.y, a: p.a, state: p.state, timer: p.timer, r: p.r }; }),
+      preds: world.preds.map(function (p) { return { id: p.id, x: p.x, y: p.y, a: p.a, state: p.state, timer: p.timer, r: p.r }; }), nextPredId: world.nextPredId,
       creatures: world.creatures.filter(function (c) { return c.alive; }).map(function (c) { var o = {}; CFIELDS.forEach(function (k) { o[k] = c[k]; }); return o; })
     };
   };
@@ -320,7 +321,8 @@
     world.rnd.setState(d.rng); world.t = d.t; world.nextId = d.nextId; world.nextEvent = d.nextEvent; world.predSpeed = d.predSpeed; world.basePreds = d.basePreds; world.predMsg = d.predMsg;
     world.foodTarget = d.foodTarget; world.cap = d.cap; world.stats = d.stats; world.archive = d.archive; world.patches = d.patches;
     world.foods = d.foods.map(function (f) { return { x: f[0], y: f[1], ph: world.rnd() * 6.28 }; });
-    world.preds = d.preds.map(function (p) { p.target = null; return p; });
+    world.nextPredId = d.nextPredId || 1000;
+    world.preds = d.preds.map(function (p) { p.target = null; if (!p.id) p.id = world.nextPredId++; return p; });
     world.creatures = d.creatures.map(function (o) {
       var c = addCreature(world, o.x, o.y, o.brain, o.g, null);
       world.stats.born--;
