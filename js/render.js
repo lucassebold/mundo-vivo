@@ -157,7 +157,7 @@
     ctx.clearRect(0, 0, w, h);
     if (!c) return;
     var NIN = Sim.NIN, NH = Sim.NH, NOUT = Sim.NOUT, i, j, k = 0;
-    var X0 = 300, X1 = w / 2 + 10, X2 = w - 230, top = 74, bot = h - 30, gap = 22;
+    var X0 = 310, X1 = w / 2 + 10, X2 = w - 250, top = 74, bot = h - 30, gap = 22;
     function yin(n) { var g = n < 3 ? 0 : n < 6 ? 1 : n < 7 ? 2 : 3; return top + n * ((bot - top - 3 * gap) / (NIN - 1)) + g * gap; }
     function yh(n) { return top + (bot - top) * (n + .5) / NH; }
     function yo(n) { return top + (bot - top) * (.3 + n * .4); }
@@ -168,8 +168,8 @@
     for (j = 0; j < NOUT; j++) for (i = 0; i < NH; i++) edges.push({ xa: X1, ya: yh(i), xb: X2, yb: yo(j), w: ws2[j][i], act: c.hid[i] });
 
     // cabeçalhos de coluna
-    ctx.font = '700 19px Outfit, system-ui, sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(205,218,255,.55)';
+    ctx.font = '800 25px Outfit, system-ui, sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(215,226,255,.8)';
     ctx.fillText('S E N S E S', X0, 30); ctx.fillText('T H I N K S', X1, 30); ctx.fillText('A C T S', X2, 30);
     ctx.strokeStyle = 'rgba(205,218,255,.12)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(X0 - 60, 46); ctx.lineTo(X0 + 60, 46); ctx.moveTo(X1 - 60, 46); ctx.lineTo(X1 + 60, 46); ctx.moveTo(X2 - 60, 46); ctx.lineTo(X2 + 60, 46); ctx.stroke();
 
@@ -216,14 +216,14 @@
     for (gi = 0; gi < GROUP.length; gi++) {
       gr = GROUP[gi];
       ys = (yin(gr.a) + yin(gr.b)) / 2;
-      Icons.draw(ctx, gr.icon, 30, ys, 30, gr.col, 1.7);
-      ctx.textAlign = 'left'; ctx.font = '800 17px Outfit, system-ui, sans-serif'; ctx.fillStyle = gr.col;
-      ctx.fillText(gr.t, 56, ys - (gr.b > gr.a ? 24 : 0));
+      Icons.draw(ctx, gr.icon, 32, ys, 40, gr.col, 1.7);
+      ctx.textAlign = 'left'; ctx.font = '800 25px Outfit, system-ui, sans-serif'; ctx.fillStyle = gr.col;
+      ctx.fillText(gr.t, 62, ys - (gr.b > gr.a ? 26 : 0));
     }
-    ctx.font = '500 17px Outfit, system-ui, sans-serif'; ctx.textAlign = 'right';
+    ctx.font = '600 24px Outfit, system-ui, sans-serif'; ctx.textAlign = 'right';
     for (i = 0; i < NIN; i++) {
       var lab = IN_LABELS[i];
-      if (i < 6) { ctx.fillStyle = 'rgba(205,218,255,' + (.4 + Math.min(.55, Math.abs(c.inp[i]) * .6)) + ')'; ctx.fillText(lab, X0 - 26, yin(i)); }
+      if (i < 6) { ctx.fillStyle = 'rgba(220,230,255,' + (.7 + Math.min(.3, Math.abs(c.inp[i]) * .4)) + ')'; ctx.fillText(lab, X0 - 28, yin(i)); }
     }
     for (i = 0; i < NIN; i++) neuron(X0, yin(i), c.inp[i], 12);
     for (j = 0; j < NH; j++) neuron(X1, yh(j), c.hid[j], 13);
@@ -232,11 +232,11 @@
     var turn = c.out[0], acc = (c.out[1] + 1) / 2;
     neuron(X2, yo(0), turn, 19); neuron(X2, yo(1), c.out[1], 19);
     ctx.textAlign = 'left';
-    ctx.font = '800 26px Outfit, system-ui, sans-serif'; ctx.fillStyle = '#fff';
-    ctx.fillText('turn', X2 + 30, yo(0) - 12);
-    ctx.fillText('accelerate', X2 + 30, yo(1) - 12);
-    ctx.font = '500 18px Outfit, system-ui, sans-serif'; ctx.fillStyle = 'rgba(255,214,160,.95)';
-    ctx.fillText(Math.abs(turn) < .15 ? 'going straight' : (turn > 0 ? 'to the right ' : 'to the left ') + Math.round(Math.abs(turn) * 100) + '%', X2 + 30, yo(0) + 12);
-    ctx.fillText(Math.round(acc * 100) + '% of top speed', X2 + 30, yo(1) + 12);
+    ctx.font = '800 34px Outfit, system-ui, sans-serif'; ctx.fillStyle = '#fff';
+    ctx.fillText('turn', X2 + 34, yo(0) - 16);
+    ctx.fillText('accelerate', X2 + 34, yo(1) - 16);
+    ctx.font = '600 25px Outfit, system-ui, sans-serif'; ctx.fillStyle = 'rgba(255,222,176,1)';
+    ctx.fillText(Math.abs(turn) < .15 ? 'going straight' : (turn > 0 ? 'to the right ' : 'to the left ') + Math.round(Math.abs(turn) * 100) + '%', X2 + 34, yo(0) + 16);
+    ctx.fillText(Math.round(acc * 100) + '% of top speed', X2 + 34, yo(1) + 16);
   };
 })();
