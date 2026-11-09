@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mundo Vivo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="world"></canvas>
+
+<header class="bar glass">
+  <div class="brand"><span class="dot"></span> MUNDO VIVO</div>
+  <div class="stats">
+    <div><small>Geração</small><b id="stGen">1</b></div>
+    <div><small>Vivos</small><b id="stPop">0</b></div>
+    <div><small>Vida média</small><b id="stLife">–</b><em id="stLifeBase"></em></div>
+    <div><small>Tempo de mundo</small><b id="stTime">0 min</b></div>
+  </div>
+  <div class="ctl">
+    <button data-sp="1" class="on">1x</button><button data-sp="2">2x</button><button data-sp="6">6x</button>
+  </div>
+</header>
+
+<div id="feed" class="feed"></div>
+
+<div id="intro" class="intro glass">
+  <button id="introClose" class="x" title="Fechar"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  <b>Uma IA vivendo sozinha</b>
+  <p>Cada ponto é uma criatura com um cérebro artificial. No começo elas não sabem nada: andam sem rumo e muitas morrem de fome. As que acham comida crescem, têm filhotes com cérebros parecidos e, com o tempo, a evolução acontece sozinha. Você acompanha uma vida inteira: do nascimento à velhice.</p>
+</div>
+
+<div id="overlay" class="overlay glass" hidden></div>
+
+<div id="card" class="card glass">
+  <div class="cardTop">
+    <div class="avatar" id="cAvatar"></div>
+    <div>
+      <div class="cName" id="cName">–</div>
+      <div class="cSub" id="cSub"></div>
+    </div>
+    <div class="cAge"><small id="cStage">filhote</small><b id="cAge">0 s</b></div>
+  </div>
+  <div class="energy"><i id="cEnergy"></i><span id="cEnergyTx">energia</span></div>
+  <div class="say" id="cSay">Observando o mundo…</div>
+  <div class="cStats"><span data-ic="leaf"><b id="cEat">0</b> comidas</span><span data-ic="lineage"><b id="cKids">0</b> filhotes</span><span data-ic="escape"><b id="cEsc">0</b> fugas</span></div>
+</div>
+
+<div id="brainBox" class="brain glass">
+  <div class="brainHead"><span data-ic="brain">O cérebro dela, ao vivo</span><div class="bh"><button id="brainBig" class="mini">ampliar</button><button id="brainToggle" class="mini">ocultar</button></div></div>
+  <canvas id="brain" width="920" height="560"></canvas>
+  <div class="brainCap" id="brainCap"></div>
+  <div class="brainChips"><span><b id="bnW">90</b> conexões</span><span><b id="bnM">0</b> mutadas ao nascer</span><span>herdado na geração <b id="bnG">1</b></span></div>
+  <div class="hint" id="brainHint">Esse cérebro nasceu aleatório e foi sendo aperfeiçoado pela evolução, geração após geração. Ninguém o programou.</div>
+</div>
+
+<script src="js/icons.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/render.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
