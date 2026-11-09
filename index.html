@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mundo Vivo</title>
+<title>Living World</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
@@ -12,25 +12,25 @@
 <canvas id="world"></canvas>
 
 <header class="bar glass">
-  <div class="brand"><span class="dot"></span> MUNDO VIVO</div>
+  <div class="brand"><span class="dot"></span> LIVING WORLD</div>
   <div class="stats">
-    <div title="Quantas divisões separam a linhagem mais nova da primeira bactéria"><small>Geração</small><b id="stGen">1</b></div>
-    <div title="Bactérias vivas agora no meio de cultura"><small>Vivos</small><b id="stPop">0</b></div>
-    <div title="Quanto tempo, em média, as últimas bactérias viveram. Se sobe, a evolução está funcionando"><small>Vida média</small><b id="stLife">–</b><em id="stLifeBase"></em></div>
-    <div title="Tempo desde que este mundo começou"><small>Mundo existe há</small><b id="stTime">0 min</b></div>
+    <div title="How many divisions separate the newest lineage from the very first bacterium"><small>Generation</small><b id="stGen">1</b></div>
+    <div title="Bacteria alive right now in the culture medium"><small>Alive</small><b id="stPop">0</b></div>
+    <div title="How long the most recent bacteria lived, on average. If it goes up, evolution is working"><small>Avg. lifespan</small><b id="stLife">–</b><em id="stLifeBase"></em></div>
+    <div title="Time since this world began"><small>World age</small><b id="stTime">0 min</b></div>
   </div>
-  <div class="live" id="live"><span class="rec"></span><b id="liveTx">AO VIVO</b><small><span id="viewers">1</span> assistindo</small></div>
+  <div class="live" id="live"><span class="rec"></span><b id="liveTx">LIVE</b><small><span id="viewers">1</span> watching</small></div>
 </header>
 
 <div id="legend" class="legend glass">
-  <button id="legendBtn" class="legendHead"><span data-ic="search">Legenda: o que você está vendo</span><em id="legendArrow">ocultar</em></button>
+  <button id="legendBtn" class="legendHead"><span data-ic="search">Legend: what you are seeing</span><em id="legendArrow">hide</em></button>
   <div id="legendBody" class="legendBody">
-    <div class="lg"><canvas data-k="bact" width="84" height="48"></canvas><div><b>Bactéria</b><span>Uma célula com cérebro artificial. O fio é o flagelo, que a impulsiona.</span></div></div>
-    <div class="lg"><canvas data-k="prot" width="84" height="48"></canvas><div><b>A que você acompanha</b><span>Contorno dourado e brilho. Ela é descrita no cartão ao lado.</span></div></div>
-    <div class="lg"><canvas data-k="nutri" width="84" height="48"></canvas><div><b>Nutriente (glicose)</b><span>É a comida. Absorver nutrientes dá energia para viver e se dividir.</span></div></div>
-    <div class="lg"><canvas data-k="ameba" width="84" height="48"></canvas><div><b>Ameba</b><span>Predador. Engole as bactérias que alcança.</span></div></div>
-    <div class="lg"><canvas data-k="range" width="84" height="48"></canvas><div><b>Alcance dos receptores</b><span>Círculo tracejado: até onde ela consegue sentir. Linha verde aponta um nutriente; vermelha, uma ameba.</span></div></div>
-    <div class="lg"><canvas data-k="div" width="84" height="48"></canvas><div><b>Divisão celular</b><span>Quando tem energia de sobra, ela se divide. A filha herda o cérebro, com pequenas mutações.</span></div></div>
+    <div class="lg"><canvas data-k="bact" width="84" height="48"></canvas><div><b>Bacterium</b><span>A cell with an artificial brain. The thin tail is the flagellum, which propels it.</span></div></div>
+    <div class="lg"><canvas data-k="prot" width="84" height="48"></canvas><div><b>The one you're following</b><span>Golden outline and glow. It is described in the card below.</span></div></div>
+    <div class="lg"><canvas data-k="nutri" width="84" height="48"></canvas><div><b>Nutrient (glucose)</b><span>This is food. Absorbing nutrients gives energy to live and to divide.</span></div></div>
+    <div class="lg"><canvas data-k="ameba" width="84" height="48"></canvas><div><b>Amoeba</b><span>A predator. It swallows any bacteria it reaches.</span></div></div>
+    <div class="lg"><canvas data-k="range" width="84" height="48"></canvas><div><b>Receptor range</b><span>Dashed circle: how far it can sense. A green line points to a nutrient; a red one, to an amoeba.</span></div></div>
+    <div class="lg"><canvas data-k="div" width="84" height="48"></canvas><div><b>Cell division</b><span>With spare energy, it divides. The daughter cell inherits the brain, with small mutations.</span></div></div>
   </div>
 </div>
 
@@ -38,9 +38,9 @@
 <div id="feed" class="feed"></div>
 
 <div id="intro" class="intro glass">
-  <button id="introClose" class="x" title="Fechar"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-  <b>Uma colônia de bactérias digitais, ao vivo</b>
-  <p>Cada bactéria digital tem um cérebro artificial e vive no mesmo meio de cultura, rodando 24 h no servidor. No começo elas não sabiam nada; as que absorvem nutrientes se dividem em células-filhas com cérebros parecidos, e a evolução acontece sozinha. As formas roxas são amebas, que caçam bactérias. Os nomes são gêneros reais, mas o comportamento é uma simulação simplificada.</p>
+  <button id="introClose" class="x" title="Close"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  <b>A colony of digital bacteria, live</b>
+  <p>Every digital bacterium has an artificial brain and lives in the same culture medium, running 24/7 on a server. At the start they knew nothing; the ones that absorb nutrients divide into daughter cells with similar brains, and evolution happens on its own. The purple shapes are amoebas, which hunt bacteria. The names are real genera, but the behavior is a simplified simulation.</p>
 </div>
 
 <div id="overlay" class="overlay glass" hidden></div>
@@ -53,19 +53,19 @@
       <div class="cGenus" id="cGenus"></div>
       <div class="cSub" id="cSub"></div>
     </div>
-    <div class="cAge"><small id="cStage">jovem</small><b id="cAge">0 s</b></div>
+    <div class="cAge"><small id="cStage">young</small><b id="cAge">0 s</b></div>
   </div>
-  <div class="energy"><i id="cEnergy"></i><span id="cEnergyTx">energia</span></div>
-  <div class="say" id="cSay">Observando o mundo…</div>
-  <div class="cStats"><span data-ic="leaf"><b id="cEat">0</b> nutrientes</span><span data-ic="lineage"><b id="cKids">0</b> divisões</span><span data-ic="escape"><b id="cEsc">0</b> fugas</span></div>
+  <div class="energy"><i id="cEnergy"></i><span id="cEnergyTx">energy</span></div>
+  <div class="say" id="cSay">Observing the world…</div>
+  <div class="cStats"><span data-ic="leaf"><b id="cEat">0</b> nutrients</span><span data-ic="lineage"><b id="cKids">0</b> divisions</span><span data-ic="escape"><b id="cEsc">0</b> escapes</span></div>
 </div>
 
 <div id="brainBox" class="brain glass">
-  <div class="brainHead"><span data-ic="brain">O cérebro dela, ao vivo</span><div class="bh"><button id="brainBig" class="mini">ampliar</button><button id="brainToggle" class="mini">ocultar</button></div></div>
+  <div class="brainHead"><span data-ic="brain">Its brain, live</span><div class="bh"><button id="brainBig" class="mini">enlarge</button><button id="brainToggle" class="mini">hide</button></div></div>
   <canvas id="brain" width="920" height="560"></canvas>
   <div class="brainCap" id="brainCap"></div>
-  <div class="brainChips"><span><b id="bnW">90</b> conexões</span><span><b id="bnM">0</b> mutadas na divisão</span><span>herdado na geração <b id="bnG">1</b></span></div>
-  <div class="hint" id="brainHint">Esse cérebro nasceu aleatório e foi sendo aperfeiçoado pela evolução, geração após geração. Ninguém o programou.</div>
+  <div class="brainChips"><span><b id="bnW">90</b> connections</span><span><b id="bnM">0</b> mutated at division</span><span>inherited in generation <b id="bnG">1</b></span></div>
+  <div class="hint" id="brainHint">This brain started out random and was refined by evolution, generation after generation. Nobody programmed it.</div>
 </div>
 
 <script src="js/icons.js"></script>

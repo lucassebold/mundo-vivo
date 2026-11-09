@@ -146,8 +146,8 @@
   };
 
   // Rede neural da protagonista: neurônios brilham, sinais viajam pelas conexões
-  var IN_LABELS = ['frente', 'lado', 'perto', 'frente', 'lado', 'perto', 'energia', 'parede'];
-  var GROUP = [{ a: 0, b: 2, t: 'NUTRIENTE', icon: 'leaf', col: '#8dffb0' }, { a: 3, b: 5, t: 'AMEBA', icon: 'alert', col: '#ff6b6b' }, { a: 6, b: 6, t: 'ENERGIA', icon: 'battery', col: '#ffb070' }, { a: 7, b: 7, t: 'BORDA', icon: 'wall', col: '#a9b6d8' }];
+  var IN_LABELS = ['ahead', 'side', 'close', 'ahead', 'side', 'close', 'energy', 'wall'];
+  var GROUP = [{ a: 0, b: 2, t: 'NUTRIENT', icon: 'leaf', col: '#8dffb0' }, { a: 3, b: 5, t: 'AMOEBA', icon: 'alert', col: '#ff6b6b' }, { a: 6, b: 6, t: 'ENERGY', icon: 'battery', col: '#ffb070' }, { a: 7, b: 7, t: 'EDGE', icon: 'wall', col: '#a9b6d8' }];
   function bez(xa, ya, xb, yb, p) {
     var cx = xa + (xb - xa) * .5, u = 1 - p;
     return [u * u * u * xa + 3 * u * u * p * cx + 3 * u * p * p * cx + p * p * p * xb, u * u * u * ya + 3 * u * u * p * ya + 3 * u * p * p * yb + p * p * p * yb];
@@ -170,7 +170,7 @@
     // cabeçalhos de coluna
     ctx.font = '700 19px Outfit, system-ui, sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
     ctx.fillStyle = 'rgba(205,218,255,.55)';
-    ctx.fillText('V Ê', X0, 30); ctx.fillText('P E N S A', X1, 30); ctx.fillText('A G E', X2, 30);
+    ctx.fillText('S E N S E S', X0, 30); ctx.fillText('T H I N K S', X1, 30); ctx.fillText('A C T S', X2, 30);
     ctx.strokeStyle = 'rgba(205,218,255,.12)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(X0 - 60, 46); ctx.lineTo(X0 + 60, 46); ctx.moveTo(X1 - 60, 46); ctx.lineTo(X1 + 60, 46); ctx.moveTo(X2 - 60, 46); ctx.lineTo(X2 + 60, 46); ctx.stroke();
 
     // conexões
@@ -233,10 +233,10 @@
     neuron(X2, yo(0), turn, 19); neuron(X2, yo(1), c.out[1], 19);
     ctx.textAlign = 'left';
     ctx.font = '800 26px Outfit, system-ui, sans-serif'; ctx.fillStyle = '#fff';
-    ctx.fillText('virar', X2 + 30, yo(0) - 12);
-    ctx.fillText('acelerar', X2 + 30, yo(1) - 12);
+    ctx.fillText('turn', X2 + 30, yo(0) - 12);
+    ctx.fillText('accelerate', X2 + 30, yo(1) - 12);
     ctx.font = '500 18px Outfit, system-ui, sans-serif'; ctx.fillStyle = 'rgba(255,214,160,.95)';
-    ctx.fillText(Math.abs(turn) < .15 ? 'seguindo reto' : (turn > 0 ? 'para a direita ' : 'para a esquerda ') + Math.round(Math.abs(turn) * 100) + '%', X2 + 30, yo(0) + 12);
-    ctx.fillText(Math.round(acc * 100) + '% da velocidade', X2 + 30, yo(1) + 12);
+    ctx.fillText(Math.abs(turn) < .15 ? 'going straight' : (turn > 0 ? 'to the right ' : 'to the left ') + Math.round(Math.abs(turn) * 100) + '%', X2 + 30, yo(0) + 12);
+    ctx.fillText(Math.round(acc * 100) + '% of top speed', X2 + 30, yo(1) + 12);
   };
 })();

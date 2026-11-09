@@ -218,7 +218,7 @@
     }
     var wantPreds = world.basePreds + Math.floor(nAlive / 60);
     if (world.t < 100) world.preds.length = 0;
-    else if (!world.event) { while (world.preds.length < wantPreds) addPred(world); if (!world.predMsg) { world.predMsg = true; world.msgs.push({ t: world.t, type: 'event', text: 'As primeiras amebas chegaram ao meio.' }); } }
+    else if (!world.event) { while (world.preds.length < wantPreds) addPred(world); if (!world.predMsg) { world.predMsg = true; world.msgs.push({ t: world.t, type: 'event', text: 'The first amoebas arrived in the medium.' }); } }
     for (i = 0; i < world.preds.length; i++) stepPred(world, world.preds[i], dt);
 
     // limpeza e socorro
@@ -264,13 +264,13 @@
       if (world.archive.length) { a = world.archive[rnd.int(world.archive.length)]; addCreature(world, rnd() * W, rnd() * H, mutateBrain(a.brain, rnd), mutateGenes(a.genes, rnd), null); }
       else addCreature(world, rnd() * W, rnd() * H, randomBrain(rnd), randomGenes(rnd), null);
     }
-    world.msgs.push({ t: world.t, type: 'rescue', text: 'A colônia quase se extinguiu. Descendentes das melhores linhagens repovoaram o meio.' });
+    world.msgs.push({ t: world.t, type: 'rescue', text: 'The colony nearly went extinct. Descendants of the best lineages repopulated the medium.' });
   }
 
   var EVENTS = [
-    { name: 'Escassez de nutrientes', text: 'Escassez: os nutrientes estão rareando no meio.', endText: 'Os nutrientes voltaram a circular.', food: .4, dur: 70 },
-    { name: 'Floração de nutrientes', text: 'Floração: uma explosão de nutrientes encheu o meio.', endText: 'A floração de nutrientes acabou.', food: 1.6, dur: 60 },
-    { name: 'Surto de amebas', text: 'Surto: mais amebas chegaram caçando bactérias.', endText: 'As amebas extras se dispersaram.', preds: 3, dur: 55 }
+    { name: 'Nutrient shortage', text: 'Shortage: nutrients are getting scarce in the medium.', endText: 'Nutrients are circulating again.', food: .4, dur: 70 },
+    { name: 'Nutrient bloom', text: 'Bloom: a burst of nutrients filled the medium.', endText: 'The nutrient bloom is over.', food: 1.6, dur: 60 },
+    { name: 'Amoeba outbreak', text: 'Outbreak: more amoebas arrived hunting bacteria.', endText: 'The extra amoebas dispersed.', preds: 3, dur: 55 }
   ];
   function startEvent(world) {
     var def = EVENTS[world.rnd.int(EVENTS.length)];

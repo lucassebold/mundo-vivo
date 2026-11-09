@@ -27,23 +27,23 @@
   }
 
   // ---------- Mensagens vindas do servidor ----------
-  var CAUSE = { fome: 'por falta de nutrientes', predador: 'engolida por uma ameba', velhice: 'por senescência, depois de uma vida longa' };
+  var CAUSE = { fome: 'from lack of nutrients', predador: 'swallowed by an amoeba', velhice: 'of old age after a long life' };
   function onMsg(m) {
     if (m.k === 'prot') {
       $('overlay').hidden = true; state.overlay = false; state.sayPri = -1; state.sayUntil = 0;
-      feed('dna', 'Agora você acompanha ' + m.name + ' #' + m.id + (m.from ? ', descendente de ' + m.from : '') + ' (' + (m.gen <= 1 ? 'da primeira geração' : 'geração ' + m.gen) + ')', 'good');
+      feed('dna', 'Now following ' + m.name + ' #' + m.id + (m.from ? ', descendant of ' + m.from : '') + ' (' + (m.gen <= 1 ? 'first generation' : 'generation ' + m.gen) + ')', 'good');
     } else if (m.k === 'death') {
       var o = $('overlay');
-      o.innerHTML = '<h2>' + Icons.svg('skull', 28, Icons.COLOR.danger) + ' ' + m.name + ' morreu</h2><p>' + (m.cause === 'predador' ? 'Foi engolida por uma ameba' : m.cause === 'fome' ? 'Morreu por falta de nutrientes' : 'Morreu por senescência, depois de uma vida longa') + ' depois de ' + m.age + ' s de vida.</p>' +
-        '<p>Absorveu ' + m.eaten + ' nutrientes · ' + m.kids + ' divisão' + (m.kids === 1 ? '' : 'ões') + ' celular' + (m.kids === 1 ? '' : 'es') + ' · ' + m.escapes + ' fuga' + (m.escapes === 1 ? '' : 's') + '</p>' +
-        '<div class="next">' + (m.desc ? 'Sua linhagem continua com ' + m.nextName + '…' : 'Procurando outra bactéria para acompanhar…') + '</div>';
+      o.innerHTML = '<h2>' + Icons.svg('skull', 28, Icons.COLOR.danger) + ' ' + m.name + ' died</h2><p>' + (m.cause === 'predador' ? 'Swallowed by an amoeba' : m.cause === 'fome' ? 'Died from lack of nutrients' : 'Died of old age after a long life') + ' after ' + m.age + ' s of life.</p>' +
+        '<p>Absorbed ' + m.eaten + ' nutrients · ' + m.kids + ' cell division' + (m.kids === 1 ? '' : 's') + ' · ' + m.escapes + ' escape' + (m.escapes === 1 ? '' : 's') + '</p>' +
+        '<div class="next">' + (m.desc ? 'Its lineage continues with ' + m.nextName + '…' : 'Looking for another bacterium to follow…') + '</div>';
       o.hidden = false; state.overlay = true;
-      feed('skull', m.name + ' morreu ' + (CAUSE[m.cause] || ''), 'bad');
-    } else if (m.k === 'birth') feed('heart', m.name + ' se dividiu: nasceu uma célula-filha', 'good');
-    else if (m.k === 'escape') feed('escape', m.name + ' escapou de uma ameba', 'good');
+      feed('skull', m.name + ' died ' + (CAUSE[m.cause] || ''), 'bad');
+    } else if (m.k === 'birth') feed('heart', m.name + ' divided: a daughter cell was born', 'good');
+    else if (m.k === 'escape') feed('escape', m.name + ' escaped from an amoeba', 'good');
     else if (m.k === 'world') feed(m.icon || 'globe', m.text, 'world');
-    else if (m.k === 'gen') feed('dna', 'Nasceu a geração ' + m.gen, '');
-    else if (m.k === 'life') feed('trend', 'Vida média das células: ' + m.avg + ' s (no início: ' + m.base + ' s)', m.avg >= m.base ? 'good' : '');
+    else if (m.k === 'gen') feed('dna', 'Generation ' + m.gen + ' was born', '');
+    else if (m.k === 'life') feed('trend', 'Average cell lifespan: ' + m.avg + ' s (at the start: ' + m.base + ' s)', m.avg >= m.base ? 'good' : '');
   }
 
   // ---------- Recebendo snapshots ----------
@@ -99,17 +99,17 @@
   // ---------- Narração (descreve o estado real da criatura) ----------
   function narrate(c, now) {
     var t = view.t, r, C = Icons.COLOR;
-    if (c.near.pred && c.near.pred.d < 120) r = { pri: 5, i: 'alert', c: C.danger, s: 'Perigo! Há uma ameba perto dela.' };
-    else if (t - c.lastEscape < 3) r = { pri: 5, i: 'escape', c: C.good, s: 'Escapou da ameba por pouco!' };
-    else if (t - c.lastKid < 3.5) r = { pri: 4, i: 'heart', c: C.danger, s: 'Dividiu-se! Já são ' + c.kids + ' células-filhas.' };
-    else if (t - c.lastAte < 1.6) r = { pri: 3, i: 'leaf', c: C.good, s: 'Absorveu nutrientes! Energia em ' + Math.round(c.e / Sim.MAXE * 100) + '%.' };
-    else if (c.e < 35) r = { pri: 2, i: 'battery', c: C.accent, s: 'Quase sem energia. Precisa achar nutrientes logo.' };
-    else if (c.straight < .35 && c.age > 8) r = { pri: 1, i: 'spiral', c: C.info, s: 'Dando voltas: o cérebro dela ainda não aprendeu a seguir reto até os nutrientes.' };
-    else if (c.near.food && c.inp[0] > .5 && c.thrust > .25) r = { pri: 1, i: 'target', c: C.gold, s: 'Sentiu nutrientes e está indo atrás.' };
-    else if (c.near.food && c.inp[0] < -.3) r = { pri: 1, i: 'away', c: C.muted, s: 'Havia nutrientes por perto, mas ela foi pro outro lado.' };
-    else if (c.age < Sim.MATURE) r = { pri: 0, i: 'sprout', c: C.good, s: 'Célula jovem: crescendo e aprendendo a achar nutrientes.' };
-    else if (c.age > 200) r = { pri: 0, i: 'hourglass', c: C.muted, s: 'Já em senescência: mais lenta, mas ainda procurando nutrientes.' };
-    else r = { pri: 0, i: 'search', c: C.muted, s: 'Explorando o meio em busca de nutrientes.' };
+    if (c.near.pred && c.near.pred.d < 120) r = { pri: 5, i: 'alert', c: C.danger, s: 'Danger! An amoeba is close.' };
+    else if (t - c.lastEscape < 3) r = { pri: 5, i: 'escape', c: C.good, s: 'Escaped the amoeba by a hair!' };
+    else if (t - c.lastKid < 3.5) r = { pri: 4, i: 'heart', c: C.danger, s: 'Divided! ' + c.kids + ' daughter cell' + (c.kids === 1 ? '' : 's') + ' so far.' };
+    else if (t - c.lastAte < 1.6) r = { pri: 3, i: 'leaf', c: C.good, s: 'Absorbed nutrients! Energy at ' + Math.round(c.e / Sim.MAXE * 100) + '%.' };
+    else if (c.e < 35) r = { pri: 2, i: 'battery', c: C.accent, s: 'Almost out of energy. It needs nutrients soon.' };
+    else if (c.straight < .35 && c.age > 8) r = { pri: 1, i: 'spiral', c: C.info, s: 'Going in circles: its brain has not learned to head straight for nutrients yet.' };
+    else if (c.near.food && c.inp[0] > .5 && c.thrust > .25) r = { pri: 1, i: 'target', c: C.gold, s: 'Sensed nutrients and is heading for them.' };
+    else if (c.near.food && c.inp[0] < -.3) r = { pri: 1, i: 'away', c: C.muted, s: 'There were nutrients nearby, but it went the other way.' };
+    else if (c.age < Sim.MATURE) r = { pri: 0, i: 'sprout', c: C.good, s: 'Young cell: growing and learning to find nutrients.' };
+    else if (c.age > 200) r = { pri: 0, i: 'hourglass', c: C.muted, s: 'In senescence: slower, but still searching for nutrients.' };
+    else r = { pri: 0, i: 'search', c: C.muted, s: 'Exploring the medium in search of nutrients.' };
     if (r.pri >= state.sayPri || now > state.sayUntil) {
       if (r.s !== $('cSay').textContent) { $('cSay').textContent = r.s; state.sayUntil = now + 1900; }
       state.sayPri = r.pri; state.bubble = { i: r.i, c: r.c }; $('cAvatar').innerHTML = Icons.svg(r.i, 26, r.c);
@@ -117,43 +117,43 @@
     if (now > state.sayUntil) state.sayPri = -1;
   }
 
-  function dirText(fwd, side) { return fwd > .55 ? 'à frente' : fwd < -.55 ? 'atrás' : side > 0 ? 'à direita' : 'à esquerda'; }
+  function dirText(fwd, side) { return fwd > .55 ? 'ahead' : fwd < -.55 ? 'behind' : side > 0 ? 'to the right' : 'to the left'; }
   function brainCaption(c) {
     var seen = [];
-    if (c.near.pred) seen.push('<b>ameba ' + dirText(c.inp[3], c.inp[4]) + '</b>');
-    if (c.near.food) seen.push('<b>nutriente ' + dirText(c.inp[0], c.inp[1]) + '</b>');
+    if (c.near.pred) seen.push('<b>amoeba ' + dirText(c.inp[3], c.inp[4]) + '</b>');
+    if (c.near.food) seen.push('<b>nutrient ' + dirText(c.inp[0], c.inp[1]) + '</b>');
     var turn = c.out[0], acc = Math.round((c.out[1] + 1) / 2 * 100);
-    var act = (Math.abs(turn) < .15 ? '<b>seguir reto</b>' : '<b>virar para a ' + (turn > 0 ? 'direita' : 'esquerda') + '</b>') + ' e <b>' + (acc > 66 ? 'acelerar forte' : acc > 33 ? 'andar devagar' : 'quase parar') + '</b>';
-    return (seen.length ? 'Sente ' + seen.join(' e ') : 'Não vê nada por perto') + ' &rarr; decide ' + act + '.';
+    var act = (Math.abs(turn) < .15 ? '<b>go straight</b>' : '<b>turn ' + (turn > 0 ? 'right' : 'left') + '</b>') + ' and <b>' + (acc > 66 ? 'speed up hard' : acc > 33 ? 'move slowly' : 'almost stop') + '</b>';
+    return (seen.length ? 'Senses ' + seen.join(' and ') : 'Senses nothing nearby') + ' &rarr; decides to ' + act + '.';
   }
 
   // ---------- Interface ----------
-  function fmtTime(t) { return t < 3600 ? Math.max(1, Math.round(t / 60)) + ' min' : t < 86400 ? (t / 3600).toFixed(1).replace('.', ',') + ' h' : (t / 86400).toFixed(1).replace('.', ',') + ' dias'; }
+  function fmtTime(t) { return t < 3600 ? Math.max(1, Math.round(t / 60)) + ' min' : t < 86400 ? (t / 3600).toFixed(1) + ' h' : (t / 86400).toFixed(1) + ' days'; }
   function ui(now) {
     var s = view.st, p = view.prot;
     var live = view.connected && now - view.lastSnapPerf < 4000;
-    $('liveTx').textContent = live ? 'AO VIVO' : 'reconectando…';
+    $('liveTx').textContent = live ? 'LIVE' : 'reconnecting…';
     $('live').classList.toggle('off', !live);
     $('viewers').textContent = view.viewers || 1;
-    $('evChip').hidden = !view.ev; if (view.ev) $('evChip').textContent = 'Evento: ' + view.ev;
+    $('evChip').hidden = !view.ev; if (view.ev) $('evChip').textContent = 'Event: ' + view.ev;
     if (s) {
       $('stGen').textContent = s.gen; $('stPop').textContent = s.pop;
       $('stLife').textContent = s.avgLife ? s.avgLife + ' s' : '–';
-      $('stLifeBase').textContent = s.baseLife ? (s.avgLife >= s.baseLife ? '▲' : '▼') + ' no início: ' + s.baseLife + ' s' : 'medindo…';
+      $('stLifeBase').textContent = s.baseLife ? (s.avgLife >= s.baseLife ? '▲' : '▼') + ' at start: ' + s.baseLife + ' s' : 'measuring…';
       $('stTime').textContent = fmtTime(view.t);
     }
     if (!p) return;
     if (p.alive) { $('brainCap').innerHTML = brainCaption(p); $('bnM').textContent = p.mut; $('bnG').textContent = p.gen; $('bnW').textContent = p.brain.length; }
     $('cName').textContent = p.name + ' #' + p.id;
-    $('cGenus').textContent = (window.GENUS && GENUS[p.name]) ? 'Gênero real: ' + GENUS[p.name] : '';
-    $('cSub').textContent = (p.gen <= 1 ? 'da primeira geração' : 'geração ' + p.gen) + ' · ' + Math.round(p.speed || 0) + ' de velocidade agora';
+    $('cGenus').textContent = (window.GENUS && GENUS[p.name]) ? 'Real genus: ' + GENUS[p.name] : '';
+    $('cSub').textContent = (p.gen <= 1 ? 'first generation' : 'generation ' + p.gen) + ' · speed ' + Math.round(p.speed || 0) + ' now';
     $('cAge').textContent = Math.round(p.age) + ' s';
-    var stage = p.age < Sim.MATURE ? 'jovem' : p.age < 200 ? 'madura' : 'senescente';
-    $('cStage').textContent = 'fase: ' + stage;
+    var stage = p.age < Sim.MATURE ? 'young' : p.age < 200 ? 'mature' : 'senescent';
+    $('cStage').textContent = 'stage: ' + stage;
     if (state.stageOf !== p.id) { state.stageOf = p.id; state.stage = stage; }
-    else if (stage !== state.stage) { state.stage = stage; feed(stage === 'madura' ? 'cake' : 'hourglass', stage === 'madura' ? p.name + ' amadureceu e já pode se dividir' : p.name + ' entrou em senescência', ''); }
+    else if (stage !== state.stage) { state.stage = stage; feed(stage === 'mature' ? 'cake' : 'hourglass', stage === 'mature' ? p.name + ' matured and can now divide' : p.name + ' entered senescence', ''); }
     var pct = Math.max(0, Math.min(1, p.e / Sim.MAXE)) * 100;
-    $('cEnergy').style.width = pct + '%'; $('cEnergyTx').textContent = 'energia ' + Math.round(pct) + '%';
+    $('cEnergy').style.width = pct + '%'; $('cEnergyTx').textContent = 'energy ' + Math.round(pct) + '%';
     $('cEat').textContent = p.eaten; $('cKids').textContent = p.kids; $('cEsc').textContent = p.escapes;
   }
 
@@ -211,7 +211,7 @@
     requestAnimationFrame(frame);
     if (window.innerWidth !== W || window.innerHeight !== H) resize();
     var dt = Math.min(.1, (ts - (state.lastFrame || ts)) / 1000); state.lastFrame = ts;
-    if (!view.connected) { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = '#02030a'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = 'rgba(205,218,255,.7)'; ctx.font = '600 18px Outfit, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('Conectando ao mundo…', W / 2, H / 2); return; }
+    if (!view.connected) { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = '#02030a'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = 'rgba(205,218,255,.7)'; ctx.font = '600 18px Outfit, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('Connecting to the world…', W / 2, H / 2); return; }
     interpolate(ts);
     var p = view.prot;
     if (p && p.alive && !state.overlay) narrate(p, ts);
@@ -251,18 +251,18 @@
   }
   setInterval(function () { if (legendOn) drawLegend(performance.now() / 1000); }, 90);
   $('legendBtn').onclick = function () {
-    legendOn = !legendOn; $('legend').classList.toggle('min', !legendOn); $('legendArrow').textContent = legendOn ? 'ocultar' : 'mostrar';
+    legendOn = !legendOn; $('legend').classList.toggle('min', !legendOn); $('legendArrow').textContent = legendOn ? 'hide' : 'show';
     try { localStorage.setItem('mv.legend', legendOn ? '1' : '0'); } catch (e) {}
   };
-  try { if (localStorage.getItem('mv.legend') === '0') { legendOn = false; $('legend').classList.add('min'); $('legendArrow').textContent = 'mostrar'; } } catch (e) {}
+  try { if (localStorage.getItem('mv.legend') === '0') { legendOn = false; $('legend').classList.add('min'); $('legendArrow').textContent = 'show'; } } catch (e) {}
 
   // ---------- Controles ----------
-  $('brainBig').onclick = function () { var big = $('brainBox').classList.toggle('big'); $('brainBig').textContent = big ? 'reduzir' : 'ampliar'; };
+  $('brainBig').onclick = function () { var big = $('brainBox').classList.toggle('big'); $('brainBig').textContent = big ? 'shrink' : 'enlarge'; };
   $('brainToggle').onclick = function () {
     state.brainOn = !state.brainOn;
     $('brainBox').classList.toggle('min', !state.brainOn);
     $('brainBig').hidden = !state.brainOn;
-    $('brainToggle').textContent = state.brainOn ? 'ocultar' : 'mostrar';
+    $('brainToggle').textContent = state.brainOn ? 'hide' : 'show';
   };
   $('introClose').onclick = function () { $('intro').hidden = true; try { localStorage.setItem('mv.intro', '1'); } catch (e) {} };
   try { if (localStorage.getItem('mv.intro')) $('intro').hidden = true; } catch (e) {}

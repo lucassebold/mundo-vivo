@@ -123,10 +123,10 @@ http.createServer(function (req, res) {
   }
   if (url === '/health') { res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: true, t: Math.round(world.t), pop: world.creatures.length, viewers: clients.length })); }
   if (url === '/') url = '/index.html';
-  if (!PUBLIC.test(url) || url.indexOf('..') >= 0) { res.writeHead(404); return res.end('Não encontrado'); }
+  if (!PUBLIC.test(url) || url.indexOf('..') >= 0) { res.writeHead(404); return res.end('Not found'); }
   var file = path.join(ROOT, url);
   fs.readFile(file, function (err, data) {
-    if (err) { res.writeHead(404); return res.end('Não encontrado'); }
+    if (err) { res.writeHead(404); return res.end('Not found'); }
     res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
     res.end(data);
   });
