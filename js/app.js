@@ -4,14 +4,32 @@
   var cv = $('world'), ctx = cv.getContext('2d'), bcv = $('brain');
   var W = 0, H = 0, dpr = 1;
   var cam = { x: Sim.W / 2, y: Sim.H / 2, z: 1 };
-  var view = { t: 0, sp: 1, snapAt: 0, creatures: {}, list: [], foods: [], preds: [], patches: [], prot: null, st: null, ev: null, lastSnapPerf: 0, connected: false };
-  var state = { brainOn: true, sayPri: -1, sayUntil: 0, bubble: { i: 'search', c: '#a9b6d8' }, frame: 0, lastUi: 0, stageOf: null, stage: null, overlay: false, lastFrame: 0 };
+  var view = { t: 0, sp: 1, snapAt: 0, creatures: {}, list: [], foods: [], preds: [], patches: [], prot: null, st: null, ev: null, lastSnapPerf: 0, connected: false, lv: null, sm: 0, trades: [], say: null };
+  var state = { brainOn: true, sayPri: -1, sayUntil: 0, bubble: { i: 'search', c: '#a9b6d8' }, frame: 0, lastUi: 0, stageOf: null, stage: null, overlay: false, lastFrame: 0, fx: [], flash: 0, nextFlash: 0, smShown: 0, tradesKey: '' };
 
   document.querySelectorAll('[data-ic]').forEach(function (el) { el.insertAdjacentHTML('afterbegin', Icons.svg(el.getAttribute('data-ic'), 15, Icons.COLOR.accent)); });
   $('cAvatar').innerHTML = Icons.svg('search', 26, Icons.COLOR.muted);
 
   function resize() { dpr = window.devicePixelRatio || 1; W = window.innerWidth; H = window.innerHeight; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
   window.addEventListener('resize', function () { resize(); if (view.connected) draw(performance.now()); }); resize();
+
+  function fmtAge(sec) {
+    sec = Math.round(sec);
+    if (sec < 90) return sec + ' s';
+    if (sec < 3600) return Math.round(sec / 60) + ' min';
+    var h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60);
+    if (m === 60) { h++; m = 0; }
+    return h + ' h' + (m ? ' ' + m + ' min' : '');
+  }
+  function mmss(sec) { sec = Math.max(0, Math.round(sec)); var m = Math.floor(sec / 60), r = sec % 60; return m + ':' + (r < 10 ? '0' : '') + r; }
+  var bannerT = null;
+  function banner(title, sub, kind) {
+    var b = $('banner'); if (!b) return;
+    b.className = 'banner ' + (kind || '');
+    b.innerHTML = '<b></b><span></span>'; b.firstChild.textContent = title; b.lastChild.textContent = sub || '';
+    b.hidden = false; void b.offsetWidth; b.classList.add('go');
+    clearTimeout(bannerT); bannerT = setTimeout(function () { b.hidden = true; b.classList.remove('go'); }, 4200);
+  }
 
   // ---------- Feed ----------
   var FEED_COLOR = { good: Icons.COLOR.good, bad: Icons.COLOR.danger, world: Icons.COLOR.accent, '': Icons.COLOR.info };
@@ -28,13 +46,14 @@
 
   // ---------- Mensagens vindas do servidor ----------
   var CAUSE = { fome: 'from lack of nutrients', predador: 'swallowed by an amoeba', velhice: 'of old age after a long life' };
+  function solText(v) { return (v >= 10 ? v.toFixed(0) : v >= 1 ? v.toFixed(1) : v.toFixed(2)) + ' SOL'; }
   function onMsg(m) {
     if (m.k === 'prot') {
       $('overlay').hidden = true; state.overlay = false; state.sayPri = -1; state.sayUntil = 0;
       feed('dna', 'Now following ' + m.name + ' #' + m.id + (m.from ? ', descendant of ' + m.from : '') + ' (' + (m.gen <= 1 ? 'first generation' : 'generation ' + m.gen) + ')', 'good');
     } else if (m.k === 'death') {
       var o = $('overlay');
-      o.innerHTML = '<h2>' + Icons.svg('skull', 28, Icons.COLOR.danger) + ' ' + m.name + ' died</h2><p>' + (m.cause === 'predador' ? 'Swallowed by an amoeba' : m.cause === 'fome' ? 'Died from lack of nutrients' : 'Died of old age after a long life') + ' after ' + m.age + ' s of life.</p>' +
+      o.innerHTML = '<h2>' + Icons.svg('skull', 28, Icons.COLOR.danger) + ' ' + m.name + ' died</h2><p>' + (m.cause === 'predador' ? 'Swallowed by an amoeba' : m.cause === 'fome' ? 'Died from lack of nutrients' : 'Died of old age after a long life') + ' after ' + fmtAge(m.age) + ' of life.</p>' +
         '<p>Absorbed ' + m.eaten + ' nutrients · ' + m.kids + ' cell division' + (m.kids === 1 ? '' : 's') + ' · ' + m.escapes + ' escape' + (m.escapes === 1 ? '' : 's') + '</p>' +
         '<div class="next">' + (m.desc ? 'Its lineage continues with ' + m.nextName + '…' : 'Looking for another bacterium to follow…') + '</div>';
       o.hidden = false; state.overlay = true;
@@ -43,7 +62,44 @@
     else if (m.k === 'escape') feed('escape', m.name + ' escaped from an amoeba', 'good');
     else if (m.k === 'world') feed(m.icon || 'globe', m.text, 'world');
     else if (m.k === 'gen') feed('dna', 'Generation ' + m.gen + ' was born', '');
+    else if (m.k === 'trade') onTradeMsg(m);
+    else if (m.k === 'level') {
+      feed('dna', 'Colony evolution level ' + m.level + '/' + m.max + ': ' + m.name, 'good');
+      if (m.agent) { banner('THE AGENT AWAKENS', 'It is aware now. Talk to it in the chat.', 'agent'); var fl = $('flash'); fl.classList.remove('go'); void fl.offsetWidth; fl.classList.add('go'); }
+      else banner('EVOLUTION LEVEL ' + m.level, m.name, 'level');
+    }
+    else if (m.k === 'bite') feed('shield', m.name + ' was bitten by an amoeba, but its capsule held', 'good');
+    else if (m.k === 'dormant') feed('hourglass', m.name + ' ran out of energy and went dormant, like a spore', '');
+    else if (m.k === 'wake') feed('bolt', m.name + ' woke up from dormancy', 'good');
+    else if (m.k === 'hero-age') feed('hourglass', m.name + ' has now been alive for ' + fmtAge(m.secs), 'good');
+    else if (m.k === 'say') { view.say = { text: m.text, src: m.src, at: performance.now() }; }
+    else if (m.k === 'chat-reset') chatClear();
+    else if (m.k === 'chat') {
+      if (!view.skipChat) chatAdd(m);
+      if (m.role === 'a') view.say = { text: m.text, src: m.src, at: performance.now() };
+    }
     else if (m.k === 'life') feed('trend', 'Average cell lifespan: ' + m.avg + ' s (at the start: ' + m.base + ' s)', m.avg >= m.base ? 'good' : '');
+  }
+
+  function onTradeMsg(m) {
+    var who = m.who ? ' · ' + m.who : '', e = m.effect, now = performance.now();
+    if (m.side === 'buy') {
+      feed('leaf', 'BUY ' + solText(m.sol) + who + (e ? ' · ' + e.n + ' nutrients rain down' + (e.bloom ? ' · bloom!' : '') : ''), 'good');
+      if (e) { state.fx.push({ type: 'rain', t0: now, x: e.x, y: e.y }); if (m.sol >= 1) banner('NUTRIENT RAIN', 'A buy of ' + solText(m.sol) + ' feeds the colony', 'buy'); }
+    } else {
+      feed('storm', 'SELL ' + solText(m.sol) + who + (e ? ' · a storm sweeps the medium' : ''), 'bad');
+      if (e && m.sol >= 1) banner('STORM', 'A sell of ' + solText(m.sol) + ' churns the medium', 'sell');
+    }
+  }
+  function renderTrades() {
+    var box = $('trades'), tr = view.trades || [], key = JSON.stringify(tr);
+    if (key === state.tradesKey) return;
+    state.tradesKey = key;
+    box.hidden = !tr.length;
+    box.innerHTML = '<div class="trHead">Latest trades</div>' + tr.map(function (r) {
+      var ago = Math.max(0, Math.round((Date.now() - r.at) / 1000));
+      return '<div class="tr ' + r.side + '">' + Icons.svg(r.side === 'buy' ? 'leaf' : 'storm', 14, r.side === 'buy' ? Icons.COLOR.good : Icons.COLOR.danger) + '<b>' + (r.side === 'buy' ? 'BUY' : 'SELL') + ' ' + solText(r.sol) + '</b><span>' + (r.who || '') + '</span></div>';
+    }).join('');
   }
 
   // ---------- Recebendo snapshots ----------
@@ -57,7 +113,9 @@
     var first = !view.connected;
     view.connected = true;
     if (snaps.length && s.t < snaps[snaps.length - 1].t - 1) { snaps.length = 0; clock.off = null; }   // servidor reiniciou
-    view.lastSnapPerf = now; view.t = s.t; view.st = s.st; view.ev = s.ev; view.viewers = s.viewers; view.sp = s.sp || 1;
+    view.lastSnapPerf = now; view.t = s.t; view.st = s.st; view.ev = s.ev; view.viewers = s.viewers; view.sp = s.sp || 1; view.lv = s.lv; view.sm = s.sm || 0;
+    if (s.tr) { view.trades = s.tr; renderTrades(); }
+    if (s.sy && !view.say) view.say = { text: s.sy.text, src: s.sy.src, at: now - s.sy.ago * 1000 };
 
     var map = {}, pm = {}, i, a, c, id;
     for (i = 0; i < s.cs.length; i++) map[s.cs[i][0]] = s.cs[i];
@@ -90,16 +148,44 @@
       pc.alive = pr.alive; pc.name = pr.name; pc.gen = pr.gen; pc.eaten = pr.eaten; pc.kids = pr.kids; pc.escapes = pr.escapes; pc.mut = pr.mut; pc.straight = pr.straight; pc.thrust = pr.thrust;
       pc.inp = pr.inp; pc.hid = pr.hid; pc.out = pr.out; pc.brain = pr.brain; pc.e = pr.e; pc.age = pr.age; pc.g.vision = pr.vision; pc.g.hue = pr.hue;
       pc.near = { food: pr.near.food ? { dx: pr.near.food[0], dy: pr.near.food[1] } : null, pred: pr.near.pred ? { dx: pr.near.pred[0], dy: pr.near.pred[1], d: pr.near.pred[2] } : null };
-      pc.lastAte = pr.lastAte; pc.lastKid = pr.lastKid; pc.lastEscape = pr.lastEscape;
+      pc.lastAte = pr.lastAte; pc.lastKid = pr.lastKid; pc.lastEscape = pr.lastEscape; pc.lastBite = pr.lastBite; pc.dormant = pr.dormant; pc.maxAge = pr.maxAge || 300; pc.agent = pr.agent; pc.level = s.lv ? s.lv.n : 1;
       if (first) { cam.x = pc.x; cam.y = pc.y; }
     }
+    view.chatOpen = !!s.chat;
+    if (s.ch) { chatClear(); s.ch.forEach(function (m) { chatAdd(m); }); view.skipChat = true; }   // ao conectar, o histórico já vem completo
     for (i = 0; i < s.msgs.length; i++) onMsg(s.msgs[i]);
+    view.skipChat = false;
   }
+
+  // ---------- Conversa com o agente ----------
+  function chatClear() { $('chatLog').innerHTML = ''; }
+  function chatAdd(m) {
+    var log = $('chatLog'), d = document.createElement('div'), atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 30;
+    d.className = m.role === 'a' ? 'a' : 'v';
+    if (m.role !== 'a') { var b = document.createElement('b'); b.textContent = m.who; d.appendChild(b); }
+    d.appendChild(document.createTextNode(m.text));
+    log.appendChild(d);
+    while (log.children.length > 30) log.removeChild(log.firstChild);
+    if (atEnd || m.role === 'a') log.scrollTop = log.scrollHeight;
+  }
+  $('chatForm').onsubmit = function (e) {
+    e.preventDefault();
+    var inp = $('chatIn'), txt = inp.value.trim(), btn = $('chatBtn'), err = $('chatErr');
+    if (txt.length < 2) return;
+    btn.disabled = true; err.textContent = '';
+    var done = function () { setTimeout(function () { btn.disabled = false; }, 2500); };
+    fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: txt }) })
+      .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'Something went wrong.' }; }); })
+      .then(function (j) { if (j.ok) inp.value = ''; else err.textContent = j.error || 'Could not send.'; done(); })
+      .catch(function () { err.textContent = 'Connection problem. Try again.'; done(); });
+  };
 
   // ---------- Narração (descreve o estado real da criatura) ----------
   function narrate(c, now) {
     var t = view.t, r, C = Icons.COLOR;
-    if (c.near.pred && c.near.pred.d < 120) r = { pri: 5, i: 'alert', c: C.danger, s: 'Danger! An amoeba is close.' };
+    if (c.dormant) r = { pri: 6, i: 'shield', c: C.muted, s: 'Dormant: resting like a spore inside its shell until it recovers energy.' };
+    else if (t - c.lastBite < 3) r = { pri: 5, i: 'shield', c: C.good, s: 'An amoeba bit it, but the capsule held!' };
+    else if (c.near.pred && c.near.pred.d < 120) r = { pri: 5, i: 'alert', c: C.danger, s: 'Danger! An amoeba is close.' };
     else if (t - c.lastEscape < 3) r = { pri: 5, i: 'escape', c: C.good, s: 'Escaped the amoeba by a hair!' };
     else if (t - c.lastKid < 3.5) r = { pri: 4, i: 'heart', c: C.danger, s: 'Divided! ' + c.kids + ' daughter cell' + (c.kids === 1 ? '' : 's') + ' so far.' };
     else if (t - c.lastAte < 1.6) r = { pri: 3, i: 'leaf', c: C.good, s: 'Absorbed nutrients! Energy at ' + Math.round(c.e / Sim.MAXE * 100) + '%.' };
@@ -108,7 +194,7 @@
     else if (c.near.food && c.inp[0] > .5 && c.thrust > .25) r = { pri: 1, i: 'target', c: C.gold, s: 'Sensed nutrients and is heading for them.' };
     else if (c.near.food && c.inp[0] < -.3) r = { pri: 1, i: 'away', c: C.muted, s: 'There were nutrients nearby, but it went the other way.' };
     else if (c.age < Sim.MATURE) r = { pri: 0, i: 'sprout', c: C.good, s: 'Young cell: growing and learning to find nutrients.' };
-    else if (c.age > 200) r = { pri: 0, i: 'hourglass', c: C.muted, s: 'In senescence: slower, but still searching for nutrients.' };
+    else if (c.age > (c.maxAge || 300) * .667) r = { pri: 0, i: 'hourglass', c: C.muted, s: 'In senescence: slower, but still searching for nutrients.' };
     else r = { pri: 0, i: 'search', c: C.muted, s: 'Exploring the medium in search of nutrients.' };
     if (r.pri >= state.sayPri || now > state.sayUntil) {
       if (r.s !== $('cSay').textContent) { $('cSay').textContent = r.s; state.sayUntil = now + 1900; }
@@ -142,16 +228,37 @@
       $('stLifeBase').textContent = s.baseLife ? (s.avgLife >= s.baseLife ? '▲' : '▼') + ' at start: ' + s.baseLife + ' s' : 'measuring…';
       $('stTime').textContent = fmtTime(view.t);
     }
+    var lv = view.lv;
+    if (lv) {
+      $('evoName').textContent = 'Lv ' + lv.n + '/' + lv.max + ' · ' + lv.name;
+      var overall = lv.nx ? ((lv.n - 1) + lv.p) / (lv.max - 1) : 1;
+      $('evoFill').style.width = Math.min(100, overall * 100) + '%';
+      var pips = $('evoPips');
+      if (pips.children.length !== lv.max) { var h = '', k; for (k = 0; k < lv.max; k++) h += '<u style="left:' + (k / (lv.max - 1) * 100) + '%"></u>'; pips.innerHTML = h; }
+      for (var q = 0; q < pips.children.length; q++) { pips.children[q].className = (q < lv.n ? 'on' : '') + (q === lv.max - 1 ? ' goal' : ''); }
+      $('evoNext').textContent = lv.nx ? 'next: ' + lv.nx[0] + ' in ' + mmss(lv.nx[1]) : 'Agent fades in ' + mmss(lv.left);
+      $('evoGoalTx').textContent = lv.nx ? 'GOAL · evolve into an AGENT' : 'AGENT AWAKE · talk to it before it fades';
+      $('evoBar').classList.toggle('max', !lv.nx);
+    }
+    var sy = view.say, ag = $('agentSay');
+    if (p && p.alive && p.agent && sy) { ag.hidden = false; $('agentTx').textContent = sy.text; $('agentSrc').textContent = sy.src === 'llm' ? 'AI' : 'AGENT'; } else ag.hidden = true;
+    var isAgent = !!(p && p.alive && p.agent), ch = $('chat'), open = isAgent && !!view.chatOpen;
+    document.body.classList.toggle('agent', isAgent);
+    ch.classList.toggle('locked', !isAgent);
+    if ($('chatIn').disabled === open) { $('chatIn').disabled = !open; $('chatBtn').disabled = !open; }
+    $('chatIn').placeholder = open ? 'Say something to it…' : isAgent ? 'The Agent is not listening right now' : 'Locked until the hero becomes an Agent';
+    $('chatTitle').textContent = isAgent ? 'Talk to the Agent' : 'Chat with the Agent';
+    if (!isAgent && lv) $('chatLockTx').textContent = 'The hero has to evolve into an Agent first. Now at level ' + lv.n + ' of ' + lv.max + ' (' + lv.name + ').';
     if (!p) return;
     if (p.alive) { $('brainCap').innerHTML = brainCaption(p); $('bnM').textContent = p.mut; $('bnG').textContent = p.gen; $('bnW').textContent = p.brain.length; }
     $('cName').textContent = p.name + ' #' + p.id;
     $('cGenus').textContent = (window.GENUS && GENUS[p.name]) ? 'Real genus: ' + GENUS[p.name] : '';
     $('cSub').textContent = (p.gen <= 1 ? 'first generation' : 'generation ' + p.gen) + ' · speed ' + Math.round(p.speed || 0) + ' now';
-    $('cAge').textContent = Math.round(p.age) + ' s';
-    var stage = p.age < Sim.MATURE ? 'young' : p.age < 200 ? 'mature' : 'senescent';
-    $('cStage').textContent = 'stage: ' + stage;
+    $('cAge').textContent = fmtAge(p.age);
+    var stage = p.dormant ? 'dormant' : p.age < Sim.MATURE ? 'young' : p.age < (p.maxAge || 300) * .667 ? 'mature' : 'senescent';
+    $('cStage').textContent = 'alive for · ' + stage;
     if (state.stageOf !== p.id) { state.stageOf = p.id; state.stage = stage; }
-    else if (stage !== state.stage) { state.stage = stage; feed(stage === 'mature' ? 'cake' : 'hourglass', stage === 'mature' ? p.name + ' matured and can now divide' : p.name + ' entered senescence', ''); }
+    else if (stage !== state.stage && stage !== 'dormant' && state.stage !== 'dormant') { state.stage = stage; feed(stage === 'mature' ? 'cake' : 'hourglass', stage === 'mature' ? p.name + ' matured and can now divide' : p.name + ' entered senescence', ''); }
     var pct = Math.max(0, Math.min(1, p.e / Sim.MAXE)) * 100;
     $('cEnergy').style.width = pct + '%'; $('cEnergyTx').textContent = 'energy ' + Math.round(pct) + '%';
     $('cEat').textContent = p.eaten; $('cKids').textContent = p.kids; $('cEsc').textContent = p.escapes;
@@ -205,12 +312,29 @@
   function draw(ts) {
     var p = view.prot;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    Render.world(ctx, W, H, { patches: view.patches, foods: view.foods, creatures: view.list, preds: view.preds }, cam, p, ts / 1000, p && p.alive ? state.bubble : null);
+    var fx = null, sy = view.say;
+    if (sy && p && p.agent) { var age = (performance.now() - sy.at) / 1000, hold = 10 + sy.text.length / 14; fx = { speech: { text: sy.text, alpha: age < 1 ? age : age > hold ? Math.max(0, hold + 1 - age) : 1 } }; }
+    Render.world(ctx, W, H, { patches: view.patches, foods: view.foods, creatures: view.list, preds: view.preds }, cam, p, ts / 1000, p && p.alive ? state.bubble : null, fx);
+    // tempestade (vendas): suaviza a entrada e a saída; relâmpagos ocasionais
+    var target = view.sm || 0;
+    state.smShown += (target - state.smShown) * (1 - Math.exp(-(state.dtLast || .016) * 1.6));
+    if (state.smShown > .02) {
+      if (ts > state.nextFlash) { state.flash = 1; state.nextFlash = ts + 2500 + Math.random() * 4500; }
+      state.flash = Math.max(0, state.flash - (state.dtLast || .016) * 3.5);
+      Render.storm(ctx, W, H, ts / 1000, state.smShown, state.flash);
+    }
+    // compras: anel verde saindo do ponto onde os nutrientes caem
+    var nowP = performance.now(), i2;
+    for (i2 = state.fx.length - 1; i2 >= 0; i2--) {
+      var e = state.fx[i2], k = (nowP - e.t0) / 1500;
+      if (k >= 1) { state.fx.splice(i2, 1); continue; }
+      Render.ring(ctx, W / 2 + (e.x - cam.x) * cam.z, H / 2 + (e.y - cam.y) * cam.z, k, '141,255,176');
+    }
   }
   function frame(ts) {
     requestAnimationFrame(frame);
     if (window.innerWidth !== W || window.innerHeight !== H) resize();
-    var dt = Math.min(.1, (ts - (state.lastFrame || ts)) / 1000); state.lastFrame = ts;
+    var dt = Math.min(.1, (ts - (state.lastFrame || ts)) / 1000); state.lastFrame = ts; state.dtLast = dt;
     if (!view.connected) { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = '#02030a'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = 'rgba(205,218,255,.7)'; ctx.font = '600 18px Outfit, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('Connecting to the world…', W / 2, H / 2); return; }
     interpolate(ts);
     var p = view.prot;
@@ -235,6 +359,16 @@
         c2.fillStyle = g; c2.beginPath(); c2.arc(cx, cy, 26, 0, 6.3); c2.fill(); Render.creature(c2, bact, t, { prot: true });
       } else if (k === 'nutri') { Render.nutrient(c2, 28, 24, 6, 0); Render.nutrient(c2, 52, 16, 5, 1); Render.nutrient(c2, 58, 32, 5, 2); }
       else if (k === 'ameba') Render.pred(c2, { x: cx, y: cy, r: 8, state: 'wander' }, t);
+      else if (k === 'hero') { Render.creature(c2, bact, t, { prot: true, capsule: true }); }
+      else if (k === 'spore') { Render.creature(c2, bact, t, { prot: true, capsule: true, dormant: true }); }
+      else if (k === 'rain') {
+        c2.strokeStyle = 'rgba(141,255,176,.5)'; c2.lineWidth = 1.5; var ph = (t * 40) % 20, q;
+        for (q = 0; q < 5; q++) { var xx = 12 + q * 15, yy = ((q * 7 + ph) % 40) + 4; c2.beginPath(); c2.moveTo(xx, yy - 6); c2.lineTo(xx, yy); c2.stroke(); Render.nutrient(c2, xx, yy + 4, 3.2, q); }
+      } else if (k === 'storm') {
+        c2.fillStyle = 'rgba(20,38,90,.6)'; c2.fillRect(0, 0, 84, 48); c2.strokeStyle = 'rgba(170,200,255,.6)'; c2.lineWidth = 1.2; var ph2 = (t * 120) % 40, q2;
+        for (q2 = 0; q2 < 9; q2++) { var x2 = 6 + q2 * 9, y2 = ((q2 * 11 + ph2) % 48); c2.beginPath(); c2.moveTo(x2, y2); c2.lineTo(x2 + 4, y2 + 12); c2.stroke(); }
+        Icons.draw(c2, 'storm', 42, 22, 26, '#cfe1ff', 1.6);
+      } else if (k === 'agent') { Render.creature(c2, bact, t, { prot: true, capsule: true }); c2.strokeStyle = 'rgba(190,225,255,.8)'; c2.lineWidth = 1.5; c2.beginPath(); var q3; for (q3 = 0; q3 < 6; q3++) { var an = t * .6 + q3 / 6 * 6.283; var rx = cx + Math.cos(an) * 20, ry = cy + Math.sin(an) * 20; if (q3 === 0) c2.moveTo(rx, ry); else c2.lineTo(rx, ry); } c2.closePath(); c2.stroke(); }
       else if (k === 'range') {
         c2.strokeStyle = 'rgba(255,217,168,.45)'; c2.setLineDash([4, 4]); c2.lineWidth = 1.4; c2.beginPath(); c2.arc(cx, cy, 21, 0, 6.3); c2.stroke(); c2.setLineDash([]);
         c2.strokeStyle = 'rgba(166,255,143,.8)'; c2.beginPath(); c2.moveTo(cx, cy); c2.lineTo(cx + 17, cy - 9); c2.stroke();

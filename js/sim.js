@@ -4,8 +4,8 @@
   var W = 1400, H = 900;
   var NIN = 8, NH = 8, NOUT = 2;
   var NW = NH * (NIN + 1) + NOUT * (NH + 1);
-  var MAXE = 200, FOOD_E = 40, REP_E = 110, CAP = 130, MAX_AGE = 300, MATURE = 22, METAB = .22, TURN_COST = 1.2;
-  Sim.W = W; Sim.H = H; Sim.NIN = NIN; Sim.NH = NH; Sim.NOUT = NOUT; Sim.MAXE = MAXE; Sim.MAX_AGE = MAX_AGE; Sim.MATURE = MATURE;
+  var MAXE = 200, FOOD_E = 40, REP_E = 110, CAP = 130, MAX_AGE = 300, MATURE = 22, HERO_MAX_AGE = 6 * 3600, HERO_METAB = .3, HERO_CD = 120, BITE_E = 15, RUPTURE = .002, IMMUNE = 20, WAKE_E = 18, DORMANT_GAIN = 1, FOOD_MAX = 700, METAB = .22, TURN_COST = 1.2;
+  Sim.W = W; Sim.H = H; Sim.NIN = NIN; Sim.NH = NH; Sim.NOUT = NOUT; Sim.MAXE = MAXE; Sim.MAX_AGE = MAX_AGE; Sim.HERO_MAX_AGE = HERO_MAX_AGE; Sim.MATURE = MATURE;
 
   function rng(seed) {
     var a = seed >>> 0;
@@ -61,6 +61,20 @@
     }
   }
 
+  // ---------- Níveis: um CICLO de história ----------
+  // Cada ciclo dura ~15 min: o herói cresce por 6 níveis até virar Agente (marcos em fração do ciclo), vive alguns minutos como Agente, morre, e um novo ciclo começa.
+  // Os níveis medem o crescimento da história, não gerações reais (o cérebro das bactérias continua evoluindo de verdade em segundo plano).
+  var LEVELS = [
+    { name: 'Primitive cell', at: 0 },
+    { name: 'Motile cell', at: .1 },
+    { name: 'Forager', at: .3 },
+    { name: 'Cooperative colony', at: .5 },
+    { name: 'Proto-organism', at: .75 },
+    { name: 'Agent', at: 1 }
+  ];
+  Sim.cfg = { cycle: 900, agentMin: 300, agentMax: 600 };
+  Sim.LEVELS = LEVELS;
+
   // ---------- Mundo ----------
   Sim.create = function (seed, opts) {
     opts = opts || {};
@@ -68,7 +82,7 @@
     var world = {
       rnd: rnd, t: 0, nextId: 1, foods: [], preds: [], creatures: [], msgs: [], archive: [],
       patches: [], event: null, nextEvent: 140 + rnd() * 100, predSpeed: 90, predTimer: 0,
-      nextPredId: 1, stats: { born: 0, deaths: 0, life: [], base: null, maxGen: 0 }, foodTarget: 190, cap: CAP
+      nextPredId: 1, storm: null, evo: { level: 1, cand: 0, since: 0 }, stats: { born: 0, deaths: 0, life: [], base: null, maxGen: 0 }, foodTarget: 190, cap: CAP
     };
     for (i = 0; i < 4; i++) world.patches.push({ x: 150 + rnd() * (W - 300), y: 120 + rnd() * (H - 240), ph: rnd() * 6.28, r: 70 + rnd() * 30 });
     for (i = 0; i < world.foodTarget; i++) spawnFood(world);
@@ -97,7 +111,7 @@
       name: NAMES[world.rnd.int(NAMES.length)], x: x, y: y, a: world.rnd() * 6.28, speed: 0, e: 100, age: 0,
       g: genes, brain: brain, eaten: 0, kids: 0, cd: 6, thrust: 0, turn: 0, danger: false, escapes: 0,
       inp: [0, 0, 0, 0, 0, 0, 0, 0], hid: [0, 0, 0, 0, 0, 0, 0, 0], out: [0, 0], near: { food: null, pred: null },
-      straight: .5, pathAcc: 0, sx: x, sy: y, st: 0, lastAte: -99, lastKid: -99, lastEscape: -99, alive: true, cause: null, trail: []
+      straight: .5, pathAcc: 0, sx: x, sy: y, st: 0, lastAte: -99, lastKid: -99, lastEscape: -99, lastBite: -99, hero: false, maxAge: MAX_AGE, dormant: false, alive: true, cause: null, trail: []
     };
     c.mut = brain._m || 0;
     c.r = 6 * genes.size;
@@ -108,7 +122,7 @@
   }
 
   function sense(world, c) {
-    var cs = Math.cos(c.a), sn = Math.sin(c.a), vis = c.g.vision, i, f, dx, dy, d2, best = vis * vis, bf = null, bp = null, inp = c.inp, d;
+    var cs = Math.cos(c.a), sn = Math.sin(c.a), vis = c.g.vision * (world.storm ? 1 - .4 * world.storm.power : 1), i, f, dx, dy, d2, best = vis * vis, bf = null, bp = null, inp = c.inp, d;
     var foods = world.foods, preds = world.preds;
     for (i = 0; i < foods.length; i++) {
       f = foods[i]; dx = f.x - c.x; dy = f.y - c.y; d2 = dx * dx + dy * dy;
@@ -162,6 +176,17 @@
     if (world.event && world.t > world.event.until) { world.msgs.push({ t: world.t, type: 'event-end', text: world.event.endText }); if (world.event.preds) while (world.preds.length > world.event.basePreds) world.preds.pop(); world.event = null; }
     if (!world.event && world.t > world.nextEvent) startEvent(world);
 
+    // tempestade (vendas): corrente aleatória, nutrientes espalhados, receptores turvos; não mata ninguém por si só
+    var storm = world.storm;
+    if (storm) {
+      if (world.t > storm.until) { world.msgs.push({ t: world.t, type: 'storm-end' }); world.storm = storm = null; }
+      else { storm.ang += dt * .6; }
+    }
+    if (storm) {
+      for (i = 0; i < world.foods.length; i++) { f = world.foods[i]; f.x = clamp(f.x + rnd.gauss() * 22 * dt * storm.power, 8, W - 8); f.y = clamp(f.y + rnd.gauss() * 22 * dt * storm.power, 8, H - 8); }
+    }
+    evoTick(world);
+
     // criaturas
     nAlive = 0;
     for (i = 0; i < cs.length; i++) {
@@ -169,18 +194,25 @@
       c.age += dt; c.cd -= dt;
       sense(world, c);
       think(c);
+      if (c.dormant) { c.out[1] = -1; }
       c.turn += (c.out[0] * 4 - c.turn) * (1 - Math.exp(-dt / .15));
       c.thrust += ((c.out[1] + 1) / 2 - c.thrust) * (1 - Math.exp(-dt / .3));
       c.a += c.turn * dt;
       c.r = 6 * c.g.size * (.55 + .45 * Math.min(1, c.age / MATURE));
-      speed = c.thrust * c.g.speed * (1 - .3 * clamp((c.age - 200) / 100, 0, 1)); c.speed = speed;
+      speed = c.thrust * c.g.speed * (1 - .3 * clamp((c.age - c.maxAge * .667) / (c.maxAge * .333), 0, 1)); if (c.dormant) { speed = 0; c.thrust = 0; } c.speed = speed;
       c.x += Math.cos(c.a) * speed * dt; c.y += Math.sin(c.a) * speed * dt;
+      if (storm) { c.x = clamp(c.x + Math.cos(storm.ang) * 38 * storm.power * dt, 0, W); c.y = clamp(c.y + Math.sin(storm.ang * 1.3) * 38 * storm.power * dt, 0, H); }
       if (c.x < 0) { c.x = 0; c.a = Math.PI - c.a; } else if (c.x > W) { c.x = W; c.a = Math.PI - c.a; }
       if (c.y < 0) { c.y = 0; c.a = -c.a; } else if (c.y > H) { c.y = H; c.a = -c.a; }
       c.pathAcc += speed * dt; c.st += dt;
       if (c.st >= 3) { var dd = Math.sqrt((c.x - c.sx) * (c.x - c.sx) + (c.y - c.sy) * (c.y - c.sy)); if (c.pathAcc > 25) c.straight = c.straight * .5 + .5 * Math.min(1, dd / c.pathAcc); c.sx = c.x; c.sy = c.y; c.pathAcc = 0; c.st = 0; }
-      c.e -= Math.abs(c.turn) / 4 * TURN_COST * dt;
-      c.e -= (2 + 2.2 * c.g.size + .01 * c.g.vision + 7 * Math.pow(speed / 100, 2) * c.g.size) * METAB * dt;
+      if (c.dormant) {
+        c.e += DORMANT_GAIN * dt;
+        if (c.e >= WAKE_E) { c.dormant = false; world.msgs.push({ t: world.t, type: 'wake', c: c }); }
+      } else {
+        c.e -= Math.abs(c.turn) / 4 * TURN_COST * dt * (c.hero ? HERO_METAB : 1);
+        c.e -= (2 + 2.2 * c.g.size + .01 * c.g.vision + 7 * Math.pow(speed / 100, 2) * c.g.size) * METAB * (c.hero ? HERO_METAB : 1) * dt;
+      }
 
       // comer
       for (j = world.foods.length - 1; j >= 0; j--) {
@@ -196,13 +228,17 @@
       } else if (c.danger) { c.danger = false; escaped(world, c); }
 
       // reprodução
-      if (c.e >= REP_E && c.age >= MATURE && c.cd <= 0 && cs.length < world.cap) {
+      if (c.e >= REP_E && c.age >= MATURE && c.cd <= 0 && !c.dormant && cs.length < world.cap) {
         var child = addCreature(world, c.x + rnd.gauss() * 12, c.y + rnd.gauss() * 12, mutateBrain(c.brain, rnd), mutateGenes(c.g, rnd), c);
-        child.e = c.e * .4; c.e *= .5; c.kids++; c.cd = 18; c.lastKid = world.t;
+        child.e = c.e * .4; c.e *= .5; c.kids++; c.cd = c.hero ? HERO_CD : 18; c.lastKid = world.t;
         world.msgs.push({ t: world.t, type: 'birth', c: c, child: child });
       }
-      if (c.e <= 0) kill(world, c, 'fome');
-      else if (c.age > MAX_AGE) kill(world, c, 'velhice');
+      if (c.e <= 0) {
+        // o herói não morre de fome: entra em dormência, como um esporo, e acorda ao recuperar energia
+        if (c.hero) { c.e = 0; if (!c.dormant) { c.dormant = true; world.msgs.push({ t: world.t, type: 'dormant', c: c }); } }
+        else kill(world, c, 'fome');
+      }
+      if (c.alive && c.age > c.maxAge) kill(world, c, 'velhice');
       if (c.alive) nAlive++;
       if (((world.t * 10) | 0) % 3 === 0 && c.trail.length < 80) c.trail.push(c.x, c.y);
       if (c.trail.length > 70) c.trail.splice(0, 2);
@@ -226,6 +262,56 @@
     if (cs.length < 10) rescue(world);
   };
 
+  // Nutrientes caindo (compras): n partículas ao redor de (cx, cy)
+  Sim.nutrientRain = function (world, n, cx, cy, radius) {
+    var rnd = world.rnd, i, room = Math.max(0, FOOD_MAX - world.foods.length);
+    n = Math.min(n, room);
+    for (i = 0; i < n; i++) world.foods.push({ x: clamp(cx + rnd.gauss() * radius, 8, W - 8), y: clamp(cy + rnd.gauss() * radius, 8, H - 8), ph: rnd() * 6.28 });
+    return n;
+  };
+  // Tempestade (vendas): no máximo 60 s acumuladas
+  Sim.startStorm = function (world, power, seconds) {
+    var now = world.t, st = world.storm;
+    if (st) { st.until = Math.min(now + 60, Math.max(st.until, now + seconds)); st.power = Math.max(st.power, power); }
+    else world.storm = { until: now + Math.min(60, seconds), power: power, ang: world.rnd() * 6.28 };
+    return world.storm;
+  };
+  // Evento forçado pelo mundo (ex.: compra grande); só se não houver outro evento
+  Sim.forceEvent = function (world, name) {
+    if (world.event) return false;
+    for (var i = 0; i < EVENTS.length; i++) if (EVENTS[i].name === name) { startEvent(world, EVENTS[i]); return true; }
+    return false;
+  };
+  // Herói: a protagonista da história (metabolismo lento, cápsula contra amebas, dormência em vez de morrer de fome, vida de horas)
+  Sim.makeHero = function (c) { c.hero = true; c.maxAge = HERO_MAX_AGE; c.cd = Math.max(c.cd, 20); return c; };
+
+  // Nível do ciclo: sobe com o tempo; no topo (Agente) dura agentMin..agentMax e então acaba (o servidor mata o herói) e o ciclo recomeça
+  function levelUp(world) {
+    var evo = world.evo; evo.level++;
+    world.msgs.push({ t: world.t, type: 'levelup', level: evo.level, name: LEVELS[evo.level - 1].name });
+    if (evo.level >= LEVELS.length) evo.agentUntil = world.t + Sim.cfg.agentMin + world.rnd() * (Sim.cfg.agentMax - Sim.cfg.agentMin);
+  }
+  Sim.advanceLevel = function (world) { if (world.evo.level < LEVELS.length) levelUp(world); };
+  function startCycle(world) { var evo = world.evo; evo.level = 1; evo.t0 = world.t; evo.agentUntil = 0; evo.cycle = (evo.cycle || 0) + 1; }
+  function evoTick(world) {
+    var evo = world.evo;
+    if (!evo) return;
+    if (evo.t0 === undefined || evo.t0 === null) evo.t0 = world.t;
+    if (evo.level < LEVELS.length) {
+      var el = world.t - evo.t0;
+      while (evo.level < LEVELS.length && el >= LEVELS[evo.level].at * Sim.cfg.cycle) levelUp(world);
+    } else {
+      if (!evo.agentUntil) evo.agentUntil = world.t + Sim.cfg.agentMin + world.rnd() * (Sim.cfg.agentMax - Sim.cfg.agentMin);
+      if (world.t >= evo.agentUntil) { startCycle(world); world.msgs.push({ t: world.t, type: 'agent-end' }); }
+    }
+  }
+  Sim.killHero = function (world, c) { kill(world, c, 'velhice'); };
+  Sim.evoStatus = function (world) {
+    var evo = world.evo, lv = evo.level, nx = LEVELS[lv] || null, el = world.t - (evo.t0 || 0), cyc = Sim.cfg.cycle, p = 1, secs = 0;
+    if (nx) { var from = LEVELS[lv - 1].at * cyc, to = nx.at * cyc; p = Math.max(0, Math.min(1, (el - from) / (to - from))); secs = Math.max(0, to - el); }
+    return { level: lv, name: LEVELS[lv - 1].name, max: LEVELS.length, next: nx ? { name: nx.name, secs: secs } : null, progress: p, left: lv >= LEVELS.length ? Math.max(0, (evo.agentUntil || 0) - world.t) : 0, cycle: evo.cycle || 1 };
+  };
+
   function escaped(world, c) {
     if (world.t - c.lastEscape < 12) return;
     c.escapes++; c.lastEscape = world.t; world.msgs.push({ t: world.t, type: 'escape', c: c });
@@ -236,7 +322,7 @@
     if (p.state === 'rest') { p.timer -= dt; sp = 10; if (p.timer <= 0) p.state = 'wander'; }
     else {
       for (i = 0; i < cs.length; i++) {
-        c = cs[i]; if (!c.alive) continue;
+        c = cs[i]; if (!c.alive || c.dormant || (c.hero && world.t - c.lastBite < IMMUNE)) continue;
         dx = c.x - p.x; dy = c.y - p.y; d2 = dx * dx + dy * dy;
         if (d2 < best) { best = d2; bt = c; }
       }
@@ -247,7 +333,12 @@
         else {
           p.a = Math.atan2(bt.y - p.y, bt.x - p.x); sp = world.predSpeed;
           d = Math.sqrt(best);
-          if (d < p.r + bt.r) { kill(world, bt, 'predador'); p.state = 'rest'; p.timer = 14; sp = 0; }
+          if (d < p.r + bt.r) {
+            // cápsula do herói: a ameba só consegue morder (perde energia); com chance mínima a cápsula se rompe
+            if (bt.hero && world.rnd() >= RUPTURE) { bt.e = Math.max(1, bt.e - BITE_E); bt.lastBite = world.t; world.msgs.push({ t: world.t, type: 'bite', c: bt }); }
+            else kill(world, bt, 'predador');
+            p.state = 'rest'; p.timer = 14; sp = 0;
+          }
         }
       }
       if (p.state === 'wander') { p.a += world.rnd.gauss() * .9 * dt; sp = 38; }
@@ -272,11 +363,11 @@
     { name: 'Nutrient bloom', text: 'Bloom: a burst of nutrients filled the medium.', endText: 'The nutrient bloom is over.', food: 1.6, dur: 60 },
     { name: 'Amoeba outbreak', text: 'Outbreak: more amoebas arrived hunting bacteria.', endText: 'The extra amoebas dispersed.', preds: 3, dur: 55 }
   ];
-  function startEvent(world) {
-    var def = EVENTS[world.rnd.int(EVENTS.length)];
+  function startEvent(world, forced) {
+    var def = forced || EVENTS[world.rnd.int(EVENTS.length)];
     world.event = { name: def.name, food: def.food, preds: def.preds, endText: def.endText, until: world.t + def.dur, basePreds: world.preds.length };
     if (def.preds) for (var i = 0; i < def.preds; i++) addPred(world);
-    world.nextEvent = world.t + def.dur + 140 + world.rnd() * 160;
+    if (!forced) world.nextEvent = world.t + def.dur + 140 + world.rnd() * 160;
     world.msgs.push({ t: world.t, type: 'event', text: def.text, name: def.name });
   }
 
@@ -306,11 +397,11 @@
   };
 
   // ---------- Salvar e restaurar (para o servidor sobreviver a reinícios) ----------
-  var CFIELDS = ['id', 'parent', 'anc', 'gen', 'name', 'x', 'y', 'a', 'speed', 'e', 'age', 'g', 'brain', 'eaten', 'kids', 'cd', 'escapes', 'straight', 'lastAte', 'lastKid', 'lastEscape', 'mut'];
+  var CFIELDS = ['id', 'parent', 'anc', 'gen', 'name', 'x', 'y', 'a', 'speed', 'e', 'age', 'g', 'brain', 'eaten', 'kids', 'cd', 'escapes', 'straight', 'lastAte', 'lastKid', 'lastEscape', 'lastBite', 'mut', 'hero', 'maxAge', 'dormant'];
   Sim.serialize = function (world) {
     return {
       v: 1, t: world.t, nextId: world.nextId, rng: world.rnd.getState(), nextEvent: world.nextEvent, predSpeed: world.predSpeed, basePreds: world.basePreds, predMsg: !!world.predMsg,
-      foodTarget: world.foodTarget, cap: world.cap, stats: world.stats, archive: world.archive, patches: world.patches,
+      foodTarget: world.foodTarget, cap: world.cap, evo: world.evo, stats: world.stats, archive: world.archive, patches: world.patches,
       foods: world.foods.map(function (f) { return [Math.round(f.x), Math.round(f.y)]; }),
       preds: world.preds.map(function (p) { return { id: p.id, x: p.x, y: p.y, a: p.a, state: p.state, timer: p.timer, r: p.r }; }), nextPredId: world.nextPredId,
       creatures: world.creatures.filter(function (c) { return c.alive; }).map(function (c) { var o = {}; CFIELDS.forEach(function (k) { o[k] = c[k]; }); return o; })
@@ -319,7 +410,7 @@
   Sim.restore = function (d) {
     var world = Sim.create(1, { pop: 0, preds: 0 });
     world.rnd.setState(d.rng); world.t = d.t; world.nextId = d.nextId; world.nextEvent = d.nextEvent; world.predSpeed = d.predSpeed; world.basePreds = d.basePreds; world.predMsg = d.predMsg;
-    world.foodTarget = d.foodTarget; world.cap = d.cap; world.stats = d.stats; world.archive = d.archive; world.patches = d.patches;
+    world.foodTarget = d.foodTarget; world.cap = d.cap; if (d.evo) world.evo = d.evo; world.stats = d.stats; world.archive = d.archive; world.patches = d.patches;
     world.foods = d.foods.map(function (f) { return { x: f[0], y: f[1], ph: world.rnd() * 6.28 }; });
     world.nextPredId = d.nextPredId || 1000;
     world.preds = d.preds.map(function (p) { p.target = null; if (!p.id) p.id = world.nextPredId++; return p; });
@@ -327,6 +418,7 @@
       var c = addCreature(world, o.x, o.y, o.brain, o.g, null);
       world.stats.born--;
       CFIELDS.forEach(function (k) { c[k] = o[k]; });
+      if (!c.maxAge) c.maxAge = MAX_AGE; if (c.lastBite === undefined) c.lastBite = -99;
       c.r = 6 * c.g.size * (.55 + .45 * Math.min(1, c.age / MATURE)); c.sx = c.x; c.sy = c.y;
       return c;
     });

@@ -2,6 +2,14 @@
   "name": "mundo-vivo",
   "version": "1.0.0",
   "private": true,
-  "scripts": { "start": "node server.js" },
-  "engines": { "node": ">=12" }
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.10.0",
+    "ws": "^8.23.0"
+  }
 }

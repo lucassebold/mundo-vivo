@@ -7,31 +7,40 @@
   function creature(ctx, c, t, o) {
     o = o || {};
     var r = c.r, sp = Math.min(1, c.speed / 110), hunger = c.e < 35;
-    var hue = c.g.hue, sat = hunger ? 22 : 62, light = o.prot ? 62 : 54;
+    var hue = c.g.hue, sat = o.dormant ? 14 : hunger ? 22 : 62, light = o.dormant ? 40 : o.prot ? 62 : 54;
     var L = r * 1.9, Wd = r * .95;
     ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.a);
     ctx.globalAlpha = o.alpha === undefined ? 1 : o.alpha;
-    // flagelo
-    ctx.strokeStyle = 'hsla(' + hue + ',' + sat + '%,' + (light + 10) + '%,.8)'; ctx.lineWidth = Math.max(1, r * .16); ctx.lineCap = 'round';
+    // flagelo (recolhido na dormência)
     var amp = r * (.35 + sp * .75), ph = t * (9 + sp * 9) + c.id, k, fx, fy;
-    ctx.beginPath(); ctx.moveTo(-L, 0);
-    for (k = 1; k <= 8; k++) { fx = -L - k * r * .62; fy = Math.sin(ph - k * .85) * amp * (k / 8); ctx.lineTo(fx, fy); }
-    ctx.stroke();
+    if (!o.dormant) {
+      ctx.strokeStyle = 'hsla(' + hue + ',' + sat + '%,' + (light + 10) + '%,.8)'; ctx.lineWidth = Math.max(1, r * .16); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(-L, 0);
+      for (k = 1; k <= 8; k++) { fx = -L - k * r * .62; fy = Math.sin(ph - k * .85) * amp * (k / 8); ctx.lineTo(fx, fy); }
+      ctx.stroke();
+    }
+    // cápsula protetora do herói: um segundo contorno, transparente, em volta da célula
+    if (o.capsule) {
+      var cL = L + 3.2, cW = Wd + 3.2;
+      ctx.beginPath(); ctx.moveTo(-cL + cW, -cW); ctx.lineTo(cL - cW, -cW); ctx.arc(cL - cW, 0, cW, -Math.PI / 2, Math.PI / 2); ctx.lineTo(-cL + cW, cW); ctx.arc(-cL + cW, 0, cW, Math.PI / 2, Math.PI * 1.5); ctx.closePath();
+      ctx.fillStyle = 'rgba(255,226,189,.07)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(255,226,189,' + (.35 + .2 * Math.sin(t * 2)) + ')'; ctx.lineWidth = 1.3; ctx.stroke();
+    }
     // membrana (bastonete)
     var rad = Wd;
     ctx.beginPath(); ctx.moveTo(-L + rad, -Wd); ctx.lineTo(L - rad, -Wd); ctx.arc(L - rad, 0, Wd, -Math.PI / 2, Math.PI / 2); ctx.lineTo(-L + rad, Wd); ctx.arc(-L + rad, 0, Wd, Math.PI / 2, Math.PI * 1.5); ctx.closePath();
     var g = ctx.createLinearGradient(0, -Wd, 0, Wd);
     g.addColorStop(0, 'hsl(' + hue + ',' + sat + '%,' + (light + 12) + '%)'); g.addColorStop(1, 'hsl(' + hue + ',' + sat + '%,' + (light - 10) + '%)');
     ctx.fillStyle = g; ctx.fill();
-    ctx.strokeStyle = o.prot ? '#ffe2bd' : 'hsla(' + hue + ',' + sat + '%,' + (light + 22) + '%,.9)'; ctx.lineWidth = o.prot ? 2.2 : 1.2; ctx.stroke();
+    ctx.strokeStyle = o.dormant ? 'hsla(40,18%,72%,.95)' : o.prot ? '#ffe2bd' : 'hsla(' + hue + ',' + sat + '%,' + (light + 22) + '%,.9)'; ctx.lineWidth = o.dormant ? 3.2 : o.prot ? 2.2 : 1.2; ctx.stroke();
     // nucleoide (DNA) e vacúolo
     ctx.strokeStyle = 'hsla(' + hue + ',' + (sat + 10) + '%,' + (light - 28) + '%,.75)'; ctx.lineWidth = Math.max(.9, r * .13);
     ctx.beginPath(); ctx.moveTo(-L * .45, 0);
     for (k = 1; k <= 6; k++) ctx.lineTo(-L * .45 + k * L * .15, Math.sin(k * 1.9 + c.id) * Wd * .42);
     ctx.stroke();
     ctx.fillStyle = 'hsla(' + hue + ',40%,' + (light + 24) + '%,.55)'; ctx.beginPath(); ctx.arc(L * .42, 0, Wd * .28, 0, TAU); ctx.fill();
-    // receptores químicos na frente: mais e maiores = detecta de mais longe
-    var nr = 2 + Math.round(c.g.vision / 220 * 4);
+    // receptores químicos na frente: mais e maiores = detecta de mais longe (recolhidos na dormência)
+    var nr = o.dormant ? 0 : 2 + Math.round(c.g.vision / 220 * 4);
     ctx.strokeStyle = 'hsla(' + hue + ',' + sat + '%,' + (light + 20) + '%,.85)'; ctx.lineWidth = 1;
     for (k = 0; k < nr; k++) {
       var an = (k / (nr - 1) - .5) * 1.5, px = L - rad + Math.cos(an) * Wd, py = Math.sin(an) * Wd, ln = 1.5 + c.g.vision / 220 * 3.5;
@@ -64,6 +73,81 @@
   }
 
   R.creature = creature; R.pred = pred;
+
+  // balão de fala com quebra de linha (coordenadas do mundo)
+  function speech(ctx, text, x, y, alpha) {
+    ctx.save();
+    ctx.font = '600 15px Outfit, system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    var words = text.split(' '), lines = [], cur = '', maxW = 250, i;
+    for (i = 0; i < words.length; i++) {
+      var tst = cur ? cur + ' ' + words[i] : words[i];
+      if (ctx.measureText(tst).width > maxW && cur) { lines.push(cur); cur = words[i]; } else cur = tst;
+    }
+    if (cur) lines.push(cur);
+    var lh = 20, bw = 0;
+    for (i = 0; i < lines.length; i++) bw = Math.max(bw, ctx.measureText(lines[i]).width);
+    bw += 28; var bh = lines.length * lh + 22, bx = x - bw / 2, by = y - bh - 14;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = 'rgba(8,10,22,.92)'; ctx.strokeStyle = 'rgba(255,216,150,.85)'; ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(bx + 12, by); ctx.lineTo(bx + bw - 12, by); ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + 12); ctx.lineTo(bx + bw, by + bh - 12); ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - 12, by + bh);
+    ctx.lineTo(x + 8, by + bh); ctx.lineTo(x, by + bh + 12); ctx.lineTo(x - 8, by + bh); ctx.lineTo(bx + 12, by + bh); ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - 12); ctx.lineTo(bx, by + 12); ctx.quadraticCurveTo(bx, by, bx + 12, by);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fff6e6';
+    for (i = 0; i < lines.length; i++) ctx.fillText(lines[i], bx + 14, by + 11 + lh / 2 + i * lh);
+    ctx.restore();
+  }
+
+  // anéis de nível em volta do herói; no nível máximo (agente) vira um halo com nós orbitando
+  function levelRings(ctx, prot, t) {
+    var lv = prot.level || 1, n = Math.min(5, lv - 1), k, a0;
+    if (n < 1) return;
+    ctx.save(); ctx.translate(prot.x, prot.y); ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+    for (k = 0; k < n; k++) {
+      a0 = t * (.5 + k * .18) * (k % 2 ? -1 : 1);
+      ctx.strokeStyle = 'rgba(255,' + (210 - k * 12) + ',' + (140 + k * 20) + ',' + (.3 + k * .06) + ')';
+      ctx.beginPath(); ctx.arc(0, 0, 24 + k * 6.5, a0, a0 + 4.2); ctx.stroke();
+    }
+    if (prot.agent) {
+      ctx.strokeStyle = 'rgba(190,225,255,.75)'; ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      for (k = 0; k < 6; k++) { var an = t * .6 + k / 6 * TAU, rx = Math.cos(an) * 46, ry = Math.sin(an) * 46; if (k === 0) ctx.moveTo(rx, ry); else ctx.lineTo(rx, ry); }
+      ctx.closePath(); ctx.stroke();
+      for (k = 0; k < 3; k++) {
+        var an2 = -t * .9 + k / 3 * TAU, nx = Math.cos(an2) * 54, ny = Math.sin(an2) * 54, gr = ctx.createRadialGradient(nx, ny, 0, nx, ny, 9);
+        gr.addColorStop(0, 'rgba(210,235,255,.95)'); gr.addColorStop(1, 'rgba(120,170,255,0)');
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(nx, ny, 9, 0, TAU); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  // Tempestade em tela cheia: tom azulado, chuva diagonal e relâmpagos ocasionais. power 0..1; flash 0..1
+  R.storm = function (ctx, w, h, t, power, flash) {
+    if (power <= 0.01) return;
+    ctx.save();
+    ctx.fillStyle = 'rgba(20,38,90,' + (.22 * power) + ')'; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = 'rgba(170,200,255,' + (.18 + .25 * power) + ')'; ctx.lineWidth = 1.2; ctx.beginPath();
+    var n = Math.round(60 + 140 * power), i, sp = 900;
+    for (i = 0; i < n; i++) {
+      var x = ((i * 137.5) % 1) * 0 + ((i * 97) % w) , y = (((i * 53) % h) + t * sp * (.6 + (i % 5) * .12)) % (h + 60) - 30;
+      ctx.moveTo(x - 6, y); ctx.lineTo(x + 6 + 8, y + 38);
+    }
+    ctx.stroke();
+    if (flash > 0) { ctx.fillStyle = 'rgba(230,240,255,' + (.35 * flash) + ')'; ctx.fillRect(0, 0, w, h); }
+    ctx.restore();
+  };
+  // Anel de luz verde (compra): cresce a partir de (x, y) em pixels de tela, k 0..1
+  R.ring = function (ctx, x, y, k, rgb) {
+    ctx.save();
+    var rad = 20 + k * 420, a = (1 - k) * .75;
+    ctx.strokeStyle = 'rgba(' + rgb + ',' + a + ')'; ctx.lineWidth = 6 * (1 - k) + 1.5;
+    ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.stroke();
+    var g = ctx.createRadialGradient(x, y, 0, x, y, rad);
+    g.addColorStop(0, 'rgba(' + rgb + ',0)'); g.addColorStop(.8, 'rgba(' + rgb + ',0)'); g.addColorStop(1, 'rgba(' + rgb + ',' + (a * .18) + ')');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.fill();
+    ctx.restore();
+  };
   R.nutrient = function (ctx, x, y, s, ph) {
     ctx.fillStyle = 'rgba(190,255,130,.9)'; ctx.strokeStyle = 'rgba(230,255,190,.9)'; ctx.lineWidth = 1; ctx.beginPath();
     for (var q = 0; q < 6; q++) { var an = q / 6 * TAU + ph * .2; if (q === 0) ctx.moveTo(x + Math.cos(an) * s, y + Math.sin(an) * s); else ctx.lineTo(x + Math.cos(an) * s, y + Math.sin(an) * s); }
@@ -71,7 +155,7 @@
   };
 
   // cam: { x, y, z }; prot: criatura protagonista (ou null); bubble: emoji sobre ela
-  R.world = function (ctx, w, h, world, cam, prot, t, bubble) {
+  R.world = function (ctx, w, h, world, cam, prot, t, bubble, fx) {
     var bg = ctx.createRadialGradient(w / 2, h / 2, 50, w / 2, h / 2, Math.max(w, h) * .8);
     bg.addColorStop(0, '#0a1620'); bg.addColorStop(1, '#02030a');
     ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
@@ -128,7 +212,9 @@
       var rg2 = ctx.createRadialGradient(prot.x, prot.y, 4, prot.x, prot.y, 46 + Math.sin(t * 4) * 4);
       rg2.addColorStop(0, 'rgba(255,200,140,.45)'); rg2.addColorStop(1, 'rgba(255,176,112,0)');
       ctx.fillStyle = rg2; ctx.beginPath(); ctx.arc(prot.x, prot.y, 50, 0, TAU); ctx.fill();
-      creature(ctx, prot, t, { prot: true });
+      levelRings(ctx, prot, t);
+      creature(ctx, prot, t, { prot: true, capsule: true, dormant: !!prot.dormant });
+      if (fx && fx.speech && fx.speech.alpha > 0) speech(ctx, fx.speech.text, prot.x, prot.y - prot.r * 2 - 58, fx.speech.alpha);
       if (bubble) {
         var bx = prot.x, by = prot.y - prot.r * 2 - 30;
         ctx.fillStyle = 'rgba(8,10,22,.86)'; ctx.beginPath(); ctx.arc(bx, by, 17, 0, TAU); ctx.fill();

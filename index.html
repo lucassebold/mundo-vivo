@@ -22,13 +22,21 @@
   <div class="live" id="live"><span class="rec"></span><b id="liveTx">LIVE</b><small><span id="viewers">1</span> watching</small></div>
 </header>
 
+<div id="evoBar" class="evoBar glass" title="The hero grows through six levels in about 15 minutes. At the top level it becomes an Agent you can talk to, for a few minutes, before a new cycle begins.">
+  <div class="evoGoal"><span id="evoGoalTx">GOAL · evolve into an AGENT</span><em id="evoNext"></em></div>
+  <div class="evoTop"><b id="evoName">Lv 1/6 · Primitive cell</b></div>
+  <div class="evoTrack"><i id="evoFill"></i><div class="evoPips" id="evoPips"></div></div>
+</div>
+<div id="flash" class="flash"></div>
+<div id="banner" class="banner" hidden></div>
+<div id="trades" class="trades glass" hidden></div>
 <div id="evChip" class="evChip" hidden></div>
 <div id="feed" class="feed"></div>
 
 <div id="intro" class="intro glass">
   <button id="introClose" class="x" title="Close"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
   <b>A colony of digital bacteria, live</b>
-  <p>Every digital bacterium has an artificial brain and lives in the same culture medium, running 24/7 on a server. At the start they knew nothing; the ones that absorb nutrients divide into daughter cells with similar brains, and evolution happens on its own. The purple shapes are amoebas, which hunt bacteria. The names are real genera, but the behavior is a simplified simulation.</p>
+  <p>Every digital bacterium has an artificial brain and lives in the same culture medium, running 24/7 on a server. At the start they knew nothing; the ones that absorb nutrients divide into daughter cells with similar brains, and evolution happens on its own. The purple shapes are amoebas, which hunt bacteria. We follow one hero cell. In about 15 minutes it grows through six levels until it becomes an AI Agent that can talk with you in the chat. The Agent lives only a few minutes; then it fades, and a new cycle begins with a new hero. The names are real genera, but the behavior is a simplified simulation.</p>
 </div>
 
 <div id="overlay" class="overlay glass" hidden></div>
@@ -38,7 +46,11 @@
   <button id="legendBtn" class="legendHead"><span data-ic="search">Legend: what you are seeing</span><em id="legendArrow">hide</em></button>
   <div id="legendBody" class="legendBody">
     <div class="lg"><canvas data-k="bact" width="84" height="48"></canvas><div><b>Bacterium</b><span>A cell with an artificial brain. The thin tail is the flagellum, which propels it.</span></div></div>
-    <div class="lg"><canvas data-k="prot" width="84" height="48"></canvas><div><b>The one you're following</b><span>Golden outline and glow. It is described in the card below.</span></div></div>
+    <div class="lg"><canvas data-k="hero" width="84" height="48"></canvas><div><b>The hero cell</b><span>Golden glow and a clear protective capsule. Its slow metabolism keeps it alive through the whole cycle. Described in the card below.</span></div></div>
+    <div class="lg"><canvas data-k="spore" width="84" height="48"></canvas><div><b>Dormant (spore-like)</b><span>With no energy left, the hero hardens its shell and rests. Amoebas cannot swallow it until it wakes.</span></div></div>
+    <div class="lg"><canvas data-k="rain" width="84" height="48"></canvas><div><b>Nutrient rain</b><span>Falls when someone buys the token: food drops near the hero.</span></div></div>
+    <div class="lg"><canvas data-k="storm" width="84" height="48"></canvas><div><b>Storm</b><span>Comes when someone sells. It shuffles the medium and blurs receptors, but harms nobody directly.</span></div></div>
+    <div class="lg"><canvas data-k="agent" width="84" height="48"></canvas><div><b>Agent</b><span>At the highest evolution level the hero gains a halo and starts to speak.</span></div></div>
     <div class="lg"><canvas data-k="nutri" width="84" height="48"></canvas><div><b>Nutrient (glucose)</b><span>This is food. Absorbing nutrients gives energy to live and to divide.</span></div></div>
     <div class="lg"><canvas data-k="ameba" width="84" height="48"></canvas><div><b>Amoeba</b><span>A predator. It swallows any bacteria it reaches.</span></div></div>
     <div class="lg"><canvas data-k="range" width="84" height="48"></canvas><div><b>Receptor range</b><span>Dashed circle: how far it can sense. A green line points to a nutrient; a red one, to an amoeba.</span></div></div>
@@ -50,17 +62,26 @@
   <div class="cardTop">
     <div class="avatar" id="cAvatar"></div>
     <div>
-      <div class="cName" id="cName">–</div>
+      <div class="cName"><span id="cName">–</span><span class="agentTag">AGENT</span></div>
       <div class="cGenus" id="cGenus"></div>
       <div class="cSub" id="cSub"></div>
     </div>
-    <div class="cAge"><small id="cStage">young</small><b id="cAge">0 s</b></div>
+    <div class="cAge"><small id="cStage">alive for</small><b id="cAge">0 s</b></div>
   </div>
   <div class="energy"><i id="cEnergy"></i><span id="cEnergyTx">energy</span></div>
   <div class="say" id="cSay">Observing the world…</div>
+  <div class="agentSay" id="agentSay" hidden><b id="agentSrc">AGENT</b><span id="agentTx"></span></div>
   <div class="cStats"><span data-ic="leaf"><b id="cEat">0</b> nutrients</span><span data-ic="lineage"><b id="cKids">0</b> divisions</span><span data-ic="escape"><b id="cEsc">0</b> escapes</span></div>
 </div>
 
+</div>
+
+<div class="chat glass locked" id="chat">
+  <div class="chatHead"><span id="chatTitle">Chat with the Agent</span><small id="chatSub">public chat · everyone sees it</small></div>
+  <div class="chatLock" id="chatLock"><b>Locked</b><span id="chatLockTx">The hero has to evolve into an Agent first. Reach level 6 to wake it up.</span></div>
+  <div class="chatLog" id="chatLog"></div>
+  <form class="chatForm" id="chatForm" autocomplete="off"><input id="chatIn" maxlength="200" placeholder="Say something to it…" disabled><button id="chatBtn" type="submit" disabled>Send</button></form>
+  <div class="chatErr" id="chatErr"></div>
 </div>
 
 <div id="brainBox" class="brain glass">
