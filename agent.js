@@ -54,24 +54,48 @@ function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 // Provedor genérico compatível com a API da OpenAI (Groq, Gemini, OpenRouter...): LLM_API_KEY + LLM_BASE_URL + LLM_MODEL.
 var https = require('https'), urlMod = require('url');
-function openaiCompat(baseUrl, key, model) {
-  return function complete(system, messages, maxTok) {
-    return new Promise(function (resolve, reject) {
-      var u = urlMod.parse(baseUrl.replace(/\/+$/, '') + '/chat/completions');
-      var body = JSON.stringify({ model: model, max_tokens: maxTok || 220, temperature: .85, messages: [{ role: 'system', content: system }].concat(messages) });
-      var r = https.request({ method: 'POST', hostname: u.hostname, port: u.port || 443, path: u.path, headers: { 'Content-Type': 'application/json', 'User-Agent': 'living-world/1.0', Authorization: 'Bearer ' + key, 'Content-Length': Buffer.byteLength(body) } }, function (res) {
-        var b = ''; res.on('data', function (d) { b += d; });
-        res.on('end', function () {
-          var j; try { j = JSON.parse(b); } catch (e) { return reject(new Error('resposta inválida (HTTP ' + res.statusCode + ')')); }
-          if (res.statusCode >= 300 || !j.choices) return reject(new Error('HTTP ' + res.statusCode + ' ' + String((j.error && (j.error.message || j.error)) || '').slice(0, 120)));
-          var ch = j.choices[0] || {}, t = (ch.message && ch.message.content) || '';
-          resolve({ text: String(t).replace(/<think>[\s\S]*?<\/think>/g, ''), refused: ch.finish_reason === 'content_filter' });
-        });
-      });
-      r.setTimeout(20000, function () { r.destroy(new Error('tempo esgotado')); });
-      r.on('error', reject); r.write(body); r.end();
+// Lista os modelos que a conta realmente pode usar e escolhe o melhor para conversa
+var MODEL_PREF = [/llama-3\.3-70b/, /llama-4/, /gpt-oss-120b/, /gpt-oss-20b/, /llama-3\.1-8b/, /gemma/, /llama/];
+var MODEL_SKIP = /whisper|guard|tts|embed|moderation|vision|orpheus|prompt/i;
+function request(baseUrl, key, method, path, bodyObj) {
+  return new Promise(function (resolve, reject) {
+    var u = urlMod.parse(baseUrl.replace(/\/+$/, '') + path), body = bodyObj ? JSON.stringify(bodyObj) : null;
+    var h = { 'User-Agent': 'living-world/1.0', Authorization: 'Bearer ' + key };
+    if (body) { h['Content-Type'] = 'application/json'; h['Content-Length'] = Buffer.byteLength(body); }
+    var r = https.request({ method: method, hostname: u.hostname, port: u.port || 443, path: u.path, headers: h }, function (res) {
+      var b = ''; res.on('data', function (d) { b += d; });
+      res.on('end', function () { var j; try { j = JSON.parse(b); } catch (e) { return reject(new Error('resposta inválida (HTTP ' + res.statusCode + ')')); } resolve({ status: res.statusCode, json: j }); });
     });
-  };
+    r.setTimeout(20000, function () { r.destroy(new Error('tempo esgotado')); });
+    r.on('error', reject); if (body) r.write(body); r.end();
+  });
+}
+function pickModel(baseUrl, key) {
+  return request(baseUrl, key, 'GET', '/models').then(function (r) {
+    var ids = ((r.json && r.json.data) || []).map(function (m) { return String(m.id || '').replace(/^models\//, ''); }).filter(function (id) { return id && !MODEL_SKIP.test(id); }), i, j;
+    for (i = 0; i < MODEL_PREF.length; i++) for (j = 0; j < ids.length; j++) if (MODEL_PREF[i].test(ids[j])) return ids[j];
+    if (ids.length) return ids[0];
+    throw new Error('nenhum modelo disponível para esta chave (HTTP ' + r.status + ')');
+  });
+}
+function openaiCompat(baseUrl, key, model, onModel) {
+  function call(system, messages, maxTok, retry) {
+    var req = { model: model, max_tokens: maxTok || 220, temperature: .85, messages: [{ role: 'system', content: system }].concat(messages) };
+    if (/gpt-oss/.test(model)) { req.reasoning_effort = 'low'; req.max_tokens = (maxTok || 220) * 4; }   // modelo que 'pensa': deixa folga para o raciocínio não comer a resposta
+    return request(baseUrl, key, 'POST', '/chat/completions', req).then(function (r) {
+      var j = r.json;
+      if (r.status >= 300 || !j.choices) {
+        var msg = String((j.error && (j.error.message || j.error)) || '').slice(0, 140);
+        if (retry && (r.status === 404 || r.status === 400) && /model/i.test(msg)) {   // modelo errado ou sem acesso: escolhe outro da lista da conta
+          return pickModel(baseUrl, key).then(function (m) { if (m === model) throw new Error('HTTP ' + r.status + ' ' + msg); model = m; if (onModel) onModel(m); return call(system, messages, maxTok, false); });
+        }
+        throw new Error('HTTP ' + r.status + ' ' + msg);
+      }
+      var ch = j.choices[0] || {}, t = (ch.message && ch.message.content) || '';
+      return { text: String(t).replace(/<think>[\s\S]*?<\/think>/g, ''), refused: ch.finish_reason === 'content_filter' };
+    });
+  }
+  return function complete(system, messages, maxTok) { return call(system, messages, maxTok, true); };
 }
 
 function create(opts) {
@@ -84,7 +108,7 @@ function create(opts) {
     };
   } else if (process.env.LLM_API_KEY) {
     var base = process.env.LLM_BASE_URL || 'https://api.groq.com/openai/v1';
-    complete = openaiCompat(base, String(process.env.LLM_API_KEY).trim().replace(/^["']|["']$/g, ''), String(process.env.LLM_MODEL || '').trim() || (/generativelanguage/.test(base) ? 'gemini-2.5-flash-lite' : 'llama-3.3-70b-versatile'));
+    complete = openaiCompat(base, String(process.env.LLM_API_KEY).trim().replace(/^["']|["']$/g, ''), String(process.env.LLM_MODEL || '').trim() || (/generativelanguage/.test(base) ? 'gemini-2.5-flash-lite' : 'llama-3.3-70b-versatile'), function (m) { log('agente: modelo ajustado para ' + m); if (st) st.model = m; });
     client = true;
   } else if (Anthropic && process.env.ANTHROPIC_API_KEY) {
     try {
@@ -96,7 +120,7 @@ function create(opts) {
       client = true;
     } catch (e) { log('agente: não foi possível criar o cliente (' + e.message + ')'); }
   }
-  var st = { lastErr: '', lastChat: '', lastSpoke: 0, stamps: [], inflight: false, recent: [], llm: !!complete };
+  var st = { model: "", lastErr: '', lastChat: '', lastSpoke: 0, stamps: [], inflight: false, recent: [], llm: !!complete };
 
   function perHourOk(now) {
     st.stamps = st.stamps.filter(function (t) { return now - t < 3600000; });

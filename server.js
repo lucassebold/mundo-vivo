@@ -280,7 +280,7 @@ http.createServer(function (req, res) {
   if (url === '/health') {
     var ev = Sim.evoStatus(world);
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ ok: true, t: Math.round(world.t), pop: world.creatures.length, viewers: clients.length, level: ev.level + '/' + ev.max + ' ' + ev.name, cycle: ev.cycle, agentLeft: Math.round(ev.left), hero: dir.prot ? { name: dir.prot.name, ageMin: Math.round(dir.prot.age / 60), alive: dir.prot.alive } : null, trades: tradeStatus, agent: { unlocked: agentUnlocked(), llm: agent.state.llm, chat: chatOpen(), lastErr: agent.state.lastErr, lastChat: agent.state.lastChat } }));
+    return res.end(JSON.stringify({ ok: true, t: Math.round(world.t), pop: world.creatures.length, viewers: clients.length, level: ev.level + '/' + ev.max + ' ' + ev.name, cycle: ev.cycle, agentLeft: Math.round(ev.left), hero: dir.prot ? { name: dir.prot.name, ageMin: Math.round(dir.prot.age / 60), alive: dir.prot.alive } : null, trades: tradeStatus, agent: { unlocked: agentUnlocked(), llm: agent.state.llm, chat: chatOpen(), model: agent.state.model, lastErr: agent.state.lastErr, lastChat: agent.state.lastChat } }));
   }
   if (url === '/api/chat') {                             // POST { text }: mensagem para o agente
     if (req.method !== 'POST') { res.writeHead(405, { Allow: 'POST' }); return res.end(); }
