@@ -195,7 +195,12 @@ function onTrade(t) {
 }
 
 var tradeSource = null;
-if (TOKEN_MINT) { tradeSource = Trades.startLive(TOKEN_MINT, PORTAL_KEY, onTrade, tradeStatus); console.log('Negociações: ' + (tradeStatus.mode === 'live' ? 'ao vivo para ' + TOKEN_MINT : 'DESLIGADAS: ' + tradeStatus.error)); }
+var HELIUS_KEY = String(process.env.HELIUS_API_KEY || '').trim(), RPC_WSS = String(process.env.RPC_WSS_URL || '').trim();
+if (TOKEN_MINT && !PORTAL_KEY) {      // padrão: lê a blockchain direto (Helius grátis); sem chave usa o RPC público, mais limitado
+  var wss = RPC_WSS || (HELIUS_KEY ? 'wss://mainnet.helius-rpc.com/?api-key=' + encodeURIComponent(HELIUS_KEY) : 'wss://api.mainnet-beta.solana.com');
+  tradeSource = Trades.startChain(TOKEN_MINT, wss, onTrade, tradeStatus); tradeStatus.source = HELIUS_KEY || RPC_WSS ? 'rpc' : 'rpc-publico';
+  console.log('Negociações: ao vivo pela blockchain (' + tradeStatus.source + ') para ' + TOKEN_MINT);
+} else if (TOKEN_MINT) { tradeSource = Trades.startLive(TOKEN_MINT, PORTAL_KEY, onTrade, tradeStatus); console.log('Negociações: ' + (tradeStatus.mode === 'live' ? 'ao vivo para ' + TOKEN_MINT : 'DESLIGADAS: ' + tradeStatus.error)); }
 else if (TRADE_SIM) { tradeSource = Trades.startSimulated(onTrade, tradeStatus); console.log('Negociações: SIMULADAS (TRADE_SIM=1)'); }
 else console.log('Negociações: desligadas (defina TOKEN_MINT para ligar, ou TRADE_SIM=1 para testar)');
 
@@ -275,7 +280,7 @@ http.createServer(function (req, res) {
   if (url === '/health') {
     var ev = Sim.evoStatus(world);
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ ok: true, t: Math.round(world.t), pop: world.creatures.length, viewers: clients.length, level: ev.level + '/' + ev.max + ' ' + ev.name, cycle: ev.cycle, agentLeft: Math.round(ev.left), hero: dir.prot ? { name: dir.prot.name, ageMin: Math.round(dir.prot.age / 60), alive: dir.prot.alive } : null, trades: tradeStatus, agent: { unlocked: agentUnlocked(), llm: agent.state.llm, chat: chatOpen() } }));
+    return res.end(JSON.stringify({ ok: true, t: Math.round(world.t), pop: world.creatures.length, viewers: clients.length, level: ev.level + '/' + ev.max + ' ' + ev.name, cycle: ev.cycle, agentLeft: Math.round(ev.left), hero: dir.prot ? { name: dir.prot.name, ageMin: Math.round(dir.prot.age / 60), alive: dir.prot.alive } : null, trades: tradeStatus, agent: { unlocked: agentUnlocked(), llm: agent.state.llm, chat: chatOpen(), lastErr: agent.state.lastErr, lastChat: agent.state.lastChat } }));
   }
   if (url === '/api/chat') {                             // POST { text }: mensagem para o agente
     if (req.method !== 'POST') { res.writeHead(405, { Allow: 'POST' }); return res.end(); }

@@ -162,7 +162,7 @@
   function chatAdd(m) {
     var log = $('chatLog'), d = document.createElement('div'), atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 30;
     d.className = m.role === 'a' ? 'a' : 'v';
-    if (m.role !== 'a') { var b = document.createElement('b'); b.textContent = m.who; d.appendChild(b); }
+    var b = document.createElement('b'); b.textContent = m.role === 'a' ? ((view.prot && view.prot.name) || 'Agent') : m.who; d.appendChild(b);
     d.appendChild(document.createTextNode(m.text));
     log.appendChild(d);
     while (log.children.length > 30) log.removeChild(log.firstChild);
@@ -247,7 +247,7 @@
     ch.classList.toggle('locked', !isAgent);
     if ($('chatIn').disabled === open) { $('chatIn').disabled = !open; $('chatBtn').disabled = !open; }
     $('chatIn').placeholder = open ? 'Say something to it…' : isAgent ? 'The Agent is not listening right now' : 'Locked until the hero becomes an Agent';
-    $('chatTitle').textContent = isAgent ? 'Talk to the Agent' : 'Chat with the Agent';
+    $('chatTitle').textContent = isAgent ? 'Talking to ' + p.name + ' · the Agent' : 'Chat with the Agent';
     if (!isAgent && lv) $('chatLockTx').textContent = 'The hero has to evolve into an Agent first. Now at level ' + lv.n + ' of ' + lv.max + ' (' + lv.name + ').';
     if (!p) return;
     if (p.alive) { $('brainCap').innerHTML = brainCaption(p); $('bnM').textContent = p.mut; $('bnG').textContent = p.gen; $('bnW').textContent = p.brain.length; }

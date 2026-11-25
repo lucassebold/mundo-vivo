@@ -59,7 +59,7 @@ function openaiCompat(baseUrl, key, model) {
     return new Promise(function (resolve, reject) {
       var u = urlMod.parse(baseUrl.replace(/\/+$/, '') + '/chat/completions');
       var body = JSON.stringify({ model: model, max_tokens: maxTok || 220, temperature: .85, messages: [{ role: 'system', content: system }].concat(messages) });
-      var r = https.request({ method: 'POST', hostname: u.hostname, port: u.port || 443, path: u.path, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key, 'Content-Length': Buffer.byteLength(body) } }, function (res) {
+      var r = https.request({ method: 'POST', hostname: u.hostname, port: u.port || 443, path: u.path, headers: { 'Content-Type': 'application/json', 'User-Agent': 'living-world/1.0', Authorization: 'Bearer ' + key, 'Content-Length': Buffer.byteLength(body) } }, function (res) {
         var b = ''; res.on('data', function (d) { b += d; });
         res.on('end', function () {
           var j; try { j = JSON.parse(b); } catch (e) { return reject(new Error('resposta inválida (HTTP ' + res.statusCode + ')')); }
@@ -84,7 +84,7 @@ function create(opts) {
     };
   } else if (process.env.LLM_API_KEY) {
     var base = process.env.LLM_BASE_URL || 'https://api.groq.com/openai/v1';
-    complete = openaiCompat(base, process.env.LLM_API_KEY, process.env.LLM_MODEL || (/generativelanguage/.test(base) ? 'gemini-2.5-flash-lite' : 'llama-3.3-70b-versatile'));
+    complete = openaiCompat(base, String(process.env.LLM_API_KEY).trim().replace(/^["']|["']$/g, ''), String(process.env.LLM_MODEL || '').trim() || (/generativelanguage/.test(base) ? 'gemini-2.5-flash-lite' : 'llama-3.3-70b-versatile'));
     client = true;
   } else if (Anthropic && process.env.ANTHROPIC_API_KEY) {
     try {
@@ -96,7 +96,7 @@ function create(opts) {
       client = true;
     } catch (e) { log('agente: não foi possível criar o cliente (' + e.message + ')'); }
   }
-  var st = { lastSpoke: 0, stamps: [], inflight: false, recent: [], llm: !!complete };
+  var st = { lastErr: '', lastChat: '', lastSpoke: 0, stamps: [], inflight: false, recent: [], llm: !!complete };
 
   function perHourOk(now) {
     st.stamps = st.stamps.filter(function (t) { return now - t < 3600000; });
@@ -145,11 +145,12 @@ function create(opts) {
     return complete(CHAT_SYSTEM, msgs, 220).then(function (res) {
       var out = res.text;
       var t = res.refused ? null : clean(out, 420);
+      if (!t) st.lastChat = 'resposta descartada: ' + String(out || '').slice(0, 80);
       if (!t) return { text: pick(res.refused || BANNED.test(out || '') ? CHAT_BLOCKED : CHAT_FALLBACK), src: 'template' };
       chat.hist.push({ q: who + ' wrote: ' + text, a: t }); if (chat.hist.length > 6) chat.hist.shift();
       return { text: t, src: 'llm' };
     }).catch(function (e) {
-      log('agente: conversa falhou (' + (e && e.message) + ')');
+      st.lastErr = String(e && e.message); log('agente: conversa falhou (' + st.lastErr + ')');
       return { text: pick(CHAT_FALLBACK), src: 'template' };
     });
   }
