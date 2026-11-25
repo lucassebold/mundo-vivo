@@ -320,6 +320,13 @@
     var hw = W / (2 * cam.z), hh = H / (2 * cam.z);
     cam.x = hw * 2 >= Sim.W ? Sim.W / 2 : Math.max(hw, Math.min(Sim.W - hw, cam.x));
     cam.y = hh * 2 >= Sim.H ? Sim.H / 2 : Math.max(hh, Math.min(Sim.H - hh, cam.y));
+    // o herói nunca sai da zona central da tela: perto da borda do mundo a câmera passa um pouco dela, para ele não ficar escondido sob os painéis
+    if (p && p.alive) {
+      var lx = W * .17 / cam.z, ly = H * .13 / cam.z, kz = 1 - Math.exp(-dt * 7), tx = cam.x, ty = cam.y;
+      if (p.x - cam.x > lx) tx = p.x - lx; else if (cam.x - p.x > lx) tx = p.x + lx;
+      if (p.y - cam.y > ly) ty = p.y - ly; else if (cam.y - p.y > ly) ty = p.y + ly;
+      cam.x += (tx - cam.x) * kz; cam.y += (ty - cam.y) * kz;
+    }
   }
   function draw(ts) {
     var p = view.prot;
