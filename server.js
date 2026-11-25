@@ -62,7 +62,7 @@ function startProt(c, descendantOf) {
 }
 function heroFacts(c) {
   var ev = Sim.evoStatus(world);
-  return { age: c.age, energyPct: c.e / Sim.MAXE * 100, gen: c.gen, kids: c.kids, level: ev.level, levelName: ev.name, levelMax: ev.max, left: ev.left, dormant: c.dormant, danger: !!(c.near.pred && c.near.pred.d < 120) };
+  return { age: c.age, energyPct: c.e / Sim.MAXE * 100, gen: c.gen, kids: c.kids, level: ev.level, levelName: ev.name, levelMax: ev.max, left: ev.left, dormant: c.dormant, danger: !!(c.near.pred && c.near.pred.d < 120), eaten: c.eaten, escapes: c.escapes, name: c.name, pop: world.creatures.length, preds: world.preds ? world.preds.length : 0, foodNear: !!c.near.food, storm: !!world.storm, cycle: ev.cycle };
 }
 function agentSay(kind) {
   var c = dir.prot;
