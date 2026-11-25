@@ -133,9 +133,9 @@ function create(opts) {
   function facts(h) {
     var lines = [];
     lines.push('Alive for ' + fmtAge(h.age) + '; energy ' + Math.round(h.energyPct) + '%; generation ' + h.gen + '; ' + h.kids + ' divisions so far.');
-    if (h.name) lines.push('You are a ' + h.name + ' bacterium. You have absorbed ' + (h.eaten || 0) + ' nutrients, escaped amoebas ' + (h.escapes || 0) + ' times, and the colony around you has ' + (h.pop || 0) + ' bacteria and ' + (h.preds || 0) + ' amoebas. This is cycle ' + (h.cycle || 1) + ' of the colony.');
+    if (h.name) lines.push('You are a bacterium of the genus ' + h.name + '. You have absorbed ' + (h.eaten || 0) + ' nutrients, escaped amoebas ' + (h.escapes || 0) + ' times, and the colony around you has ' + (h.pop || 0) + ' bacteria and ' + (h.preds || 0) + ' amoebas. This is cycle ' + (h.cycle || 1) + ' of the colony.');
     lines.push('Colony evolution level: ' + h.levelName + ' (' + h.level + ' of ' + h.levelMax + ').');
-    if (h.left > 0) lines.push('You will fade away in about ' + Math.max(1, Math.round(h.left / 60)) + ' minute(s); your colony will begin again without you, and you may mention it wistfully but calmly.');
+    if (h.left > 0) lines.push('You will fade away in about ' + Math.max(1, Math.round(h.left / 60)) + ' minute(s); your colony will begin again without you. Mention this only if asked about time, life or death, and say it simply and calmly.');
     if (h.dormant) lines.push('Right now: dormant, resting like a spore.');
     else if (h.danger) lines.push('Right now: an amoeba is close.');
     else if (h.energyPct < 25) lines.push('Right now: low on energy, worried about it.');
