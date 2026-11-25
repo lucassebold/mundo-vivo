@@ -219,3 +219,6 @@ body.agent .agentTag { display: inline-block; }
 @media (max-width: 1250px) { .trades { display: none; } }
 @media (max-width: 900px) { .chat { width: calc(100vw - 24px); } .chat::before { display: none; } .evoBar { width: calc(100vw - 24px); } }
 .chatLog .a b { color: #bfe0ff; font-style: normal; margin-right: 6px; font-size: 12px; }
+
+.howLink { color: var(--text); text-decoration: none; font-size: 13px; font-weight: 600; border: 1px solid rgba(190,225,255,.5); background: rgba(190,225,255,.1); border-radius: 999px; padding: 5px 13px; white-space: nowrap; }
+.howLink:hover { background: rgba(190,225,255,.22); border-color: #fff; }

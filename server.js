@@ -264,7 +264,7 @@ setInterval(function () {
 
 // ---------- HTTP ----------
 var MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
-var PUBLIC = /^\/(index\.html|css\/|js\/|favicon)/;
+var PUBLIC = /^\/(index\.html|how\.html|css\/|js\/|favicon)/;
 
 http.createServer(function (req, res) {
   var parts = (req.url || '/').split('?'), url = decodeURIComponent(parts[0]), qs = {};
@@ -308,6 +308,7 @@ http.createServer(function (req, res) {
     return res.end(JSON.stringify({ ok: true, level: world.evo.level }));
   }
   if (url === '/') url = '/index.html';
+  if (url === '/how' || url === '/how-it-works') url = '/how.html';
   if (!PUBLIC.test(url) || url.indexOf('..') >= 0) { res.writeHead(404); return res.end('Not found'); }
   var file = path.join(ROOT, url);
   fs.readFile(file, function (err, data) {
