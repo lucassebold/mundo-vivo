@@ -316,16 +316,17 @@
     var p = view.prot, z = Math.max(W / 1000, H / 640, W / Sim.W, H / Sim.H);
     var kc = 1 - Math.exp(-dt * 3.2);
     cam.z += (z - cam.z) * kc;
-    if (p) { cam.x += (p.x - cam.x) * kc; cam.y += (p.y - cam.y) * kc; }
+    // cam.rx/ry seguem o herói livremente; cam.x/y são o enquadramento final (preso ao mundo, mas sempre com o herói na zona central)
+    if (cam.rx === undefined) { cam.rx = cam.x; cam.ry = cam.y; }
+    if (p) { cam.rx += (p.x - cam.rx) * kc; cam.ry += (p.y - cam.ry) * kc; }
     var hw = W / (2 * cam.z), hh = H / (2 * cam.z);
-    cam.x = hw * 2 >= Sim.W ? Sim.W / 2 : Math.max(hw, Math.min(Sim.W - hw, cam.x));
-    cam.y = hh * 2 >= Sim.H ? Sim.H / 2 : Math.max(hh, Math.min(Sim.H - hh, cam.y));
-    // o herói nunca sai da zona central da tela: perto da borda do mundo a câmera passa um pouco dela, para ele não ficar escondido sob os painéis
+    cam.x = hw * 2 >= Sim.W ? Sim.W / 2 : Math.max(hw, Math.min(Sim.W - hw, cam.rx));
+    cam.y = hh * 2 >= Sim.H ? Sim.H / 2 : Math.max(hh, Math.min(Sim.H - hh, cam.ry));
+    // perto da borda do mundo a câmera passa um pouco dela, para o herói não ficar escondido sob os painéis
     if (p && p.alive) {
-      var lx = W * .17 / cam.z, ly = H * .13 / cam.z, kz = 1 - Math.exp(-dt * 7), tx = cam.x, ty = cam.y;
-      if (p.x - cam.x > lx) tx = p.x - lx; else if (cam.x - p.x > lx) tx = p.x + lx;
-      if (p.y - cam.y > ly) ty = p.y - ly; else if (cam.y - p.y > ly) ty = p.y + ly;
-      cam.x += (tx - cam.x) * kz; cam.y += (ty - cam.y) * kz;
+      var lx = W * .17 / cam.z, ly = H * .13 / cam.z;
+      cam.x = Math.max(p.x - lx, Math.min(p.x + lx, cam.x));
+      cam.y = Math.max(p.y - ly, Math.min(p.y + ly, cam.y));
     }
   }
   function draw(ts) {
