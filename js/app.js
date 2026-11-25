@@ -159,6 +159,18 @@
 
   // ---------- Conversa com o agente ----------
   function chatClear() { $('chatLog').innerHTML = ''; }
+  // O painel de conversa acompanha a bactéria: fica ao lado dela na tela, como um balão grande
+  function placeChat(p, W, H) {
+    var ch = $('chat');
+    if (!p || !p.alive || !p.agent) return;
+    var cw = ch.offsetWidth || 330, chh = ch.offsetHeight || 260, sx = W / 2 + (p.x - cam.x) * cam.z, sy = H / 2 + (p.y - cam.y) * cam.z, flip = false, x, y;
+    if (W < 900) { ch.classList.remove('flip'); ch.style.transform = 'translate(12px,' + Math.round(Math.max(176, H * .22)) + 'px)'; return; }
+    x = sx - 90 - cw; flip = true; if (x < 392) { x = sx + 90; flip = false; }
+    x = Math.max(12, Math.min(W - cw - 12, x));
+    y = Math.max(172, Math.min(H - chh - 12, sy - 30));
+    ch.classList.toggle('flip', flip);
+    ch.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
+  }
   function chatAdd(m) {
     var log = $('chatLog'), d = document.createElement('div'), atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 30;
     d.className = m.role === 'a' ? 'a' : 'v';
@@ -315,6 +327,7 @@
     var fx = null, sy = view.say;
     if (sy && p && p.agent) { var age = (performance.now() - sy.at) / 1000, hold = 10 + sy.text.length / 14; fx = { speech: { text: sy.text, alpha: age < 1 ? age : age > hold ? Math.max(0, hold + 1 - age) : 1 } }; }
     Render.world(ctx, W, H, { patches: view.patches, foods: view.foods, creatures: view.list, preds: view.preds }, cam, p, ts / 1000, p && p.alive ? state.bubble : null, fx);
+    placeChat(p, W, H);
     // tempestade (vendas): suaviza a entrada e a saída; relâmpagos ocasionais
     var target = view.sm || 0;
     state.smShown += (target - state.smShown) * (1 - Math.exp(-(state.dtLast || .016) * 1.6));

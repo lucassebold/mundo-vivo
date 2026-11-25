@@ -192,7 +192,10 @@ svg.ic { vertical-align: -3px; flex: none; }
 .evoBar.max .evoGoal { color: #bfe0ff; }
 .intro { top: 176px !important; }
 
-.chat { margin: 10px 0 8px; padding: 10px 0 0; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.chat { position: fixed; left: 0; top: 0; width: 330px; z-index: 6; padding: 10px 14px 10px; display: flex; flex-direction: column; border-color: rgba(190,225,255,.6); box-shadow: 0 0 30px rgba(150,200,255,.28); will-change: transform; }
+.chat.locked { display: none; }
+.chat::before { content: ""; position: absolute; left: -9px; top: 26px; width: 16px; height: 16px; background: inherit; border-left: 1px solid rgba(190,225,255,.6); border-bottom: 1px solid rgba(190,225,255,.6); transform: rotate(45deg); backdrop-filter: inherit; }
+.chat.flip::before { left: auto; right: -9px; transform: rotate(225deg); }
 .chatHead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 700; flex-direction: row; }
 .chatHead small { text-transform: none; letter-spacing: 0; font-weight: 400; }
 .chatLock { display: flex; flex-direction: column; gap: 4px; align-items: center; text-align: center; padding: 14px 10px; color: #cdd8f2; font-size: 13.5px; }
@@ -200,7 +203,6 @@ svg.ic { vertical-align: -3px; flex: none; }
 .chat.locked .chatLog { display: none; }
 .chat.locked .chatForm input, .chat.locked .chatForm button { opacity: .4; }
 .chat:not(.locked) .chatLock { display: none; }
-.chat:not(.locked) { border-top-color: rgba(190,225,255,.55); }
 .chat:not(.locked) .chatHead { color: #bfe0ff; }
 .chatLog { max-height: 190px; min-height: 60px; }
 .chatLog .a { font-size: 14px; }
@@ -215,5 +217,5 @@ body.agent .cStage, body.agent #cStage { color: #bfe0ff; }
 .agentTag { display: none; margin-left: 6px; font-size: 10px; letter-spacing: .14em; font-weight: 800; color: #0b1020; background: linear-gradient(90deg, #bfe0ff, #fff); border-radius: 8px; padding: 1px 8px; vertical-align: 2px; }
 body.agent .agentTag { display: inline-block; }
 @media (max-width: 1250px) { .trades { display: none; } }
-@media (max-width: 900px) { .evoBar { width: calc(100vw - 24px); } }
+@media (max-width: 900px) { .chat { width: calc(100vw - 24px); } .chat::before { display: none; } .evoBar { width: calc(100vw - 24px); } }
 .chatLog .a b { color: #bfe0ff; font-style: normal; margin-right: 6px; font-size: 12px; }
