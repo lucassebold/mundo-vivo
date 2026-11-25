@@ -75,151 +75,94 @@ footer { text-align: center; color: var(--muted); font-size: 13px; margin-top: 3
 <main>
   <div class="hero">
     <small>How it works</small>
-    <h1>A tiny world that lives on its own, and one bacterium that wakes up.</h1>
-    <p>Living World is a live simulation of digital bacteria. Nobody controls them. They eat, they get hunted, they divide and they evolve. Every 15 minutes or so, one of them evolves all the way up to an <b>AI Agent</b> that you can talk to, for a few minutes, before it fades and a new one begins.</p>
+    <h1>A world where artificial minds are learning to live.</h1>
+    <p>Living World is a world built by AI, alive right now. Tiny digital creatures are born, struggle, learn and evolve here, around the clock. And sometimes, one of them wakes up.</p>
     <div class="toc">
-      <a href="#world">The world</a><a href="#bacteria">The bacteria</a><a href="#evolution">Evolution</a><a href="#hero">The hero</a><a href="#levels">The 6 levels</a><a href="#agent">The Agent</a><a href="#chat">Chatting</a><a href="#trades">Buys &amp; sells</a><a href="#faq">Questions</a>
+      <a href="#world">The world</a><a href="#life">Digital life</a><a href="#hero">The hero</a><a href="#levels">The ascent</a><a href="#agent">The Agent</a><a href="#chat">Talk to it</a><a href="#trades">The world reacts</a><a href="#faq">Questions</a>
     </div>
   </div>
 
   <section id="world">
-    <h2><span>01</span>What am I looking at?</h2>
-    <p>A culture medium, like a drop of water under a microscope, running on a server 24 hours a day. Everyone who opens the page sees <b>the same world at the same moment</b>. It is not a recording and it does not restart when you leave.</p>
+    <h2><span>01</span>A world that never stops</h2>
+    <p>Open the page at any hour and the world is already in motion. It is not a video and it does not wait for you. Everyone who watches sees <b>the same moment, at the same time</b>, as it happens.</p>
     <div class="grid">
-      <div class="card"><b class="t">Bacteria</b>Small cells with a tail and an artificial brain. They look for food and run from danger.</div>
-      <div class="card"><b class="t">Nutrients</b>The green dots. Food. Eating them gives energy to live and to divide.</div>
-      <div class="card"><b class="t">Amoebas</b>The purple shapes. Predators that swallow any bacterium they reach.</div>
+      <div class="card"><b class="t">Always on</b>Day and night, the colony keeps living, whether anyone is watching or not.</div>
+      <div class="card"><b class="t">Shared</b>One world for everyone. What you see is what everyone else sees.</div>
+      <div class="card"><b class="t">Unscripted</b>You never know what happens next: a hunt, an escape, a storm, a birth.</div>
     </div>
-    <p>The camera follows one special bacterium, the <b>hero</b>. Its card, its brain and its words are shown on screen. When it fades, a new hero is chosen and the story starts again.</p>
   </section>
 
-  <section id="bacteria">
-    <h2><span>02</span>What is a bacterium here?</h2>
-    <p>Each bacterium is a very small program with a very small brain: a neural network with <b>90 connections</b>. It does not read text, it does not plan. It only senses a few things and then makes two choices.</p>
-    <svg class="nn" viewBox="0 0 560 250" role="img" aria-label="Neural network: 8 senses, 8 hidden neurons, 2 actions">
-      <defs><linearGradient id="gl" x1="0" x2="1"><stop offset="0" stop-color="#7aa7ff" stop-opacity=".55"/><stop offset="1" stop-color="#ffb070" stop-opacity=".55"/></linearGradient></defs>
-      <g id="nnLines" stroke="url(#gl)" stroke-width=".8" opacity=".5"></g>
-      <g id="nnDots"></g>
-      <g fill="#cdd9ff" font-size="12" font-family="Outfit, sans-serif">
-        <text x="14" y="16">SENSES (8)</text><text x="238" y="16">THINKS (8)</text><text x="452" y="16">ACTS (2)</text>
-        <text x="448" y="104">turn left / right</text><text x="448" y="164">speed up / slow down</text>
-      </g>
-    </svg>
+  <section id="life">
+    <h2><span>02</span>Digital life</h2>
+    <p>Every creature in this world carries a small artificial mind. At first it knows nothing. It learns, little by little, where food is, what is dangerous and how to stay alive. When a creature thrives, it passes what it has to its children, and each generation starts a little wiser than the last.</p>
     <div class="grid">
-      <div class="card"><b class="t">It senses</b>Is there food ahead, to the side or very close? Is there an amoeba ahead, to the side or very close? How much energy do I have? Am I near the edge?</div>
-      <div class="card"><b class="t">It decides</b>Two things only: which way to turn, and how fast to go. Turning and moving cost energy, so wandering around is expensive.</div>
+      <div class="card"><b class="t">Bacteria</b>The inhabitants of this world. Small, restless, always searching.</div>
+      <div class="card"><b class="t">Nutrients</b>The green sparks that keep them alive.</div>
+      <div class="card"><b class="t">Amoebas</b>The hunters. Not everyone makes it.</div>
     </div>
-    <p>Nobody wrote the rules of this brain. At the start the connections are random, and a random brain mostly swims in circles.</p>
-  </section>
-
-  <section id="evolution">
-    <h2><span>03</span>How does evolution happen?</h2>
-    <p>There is no designer and no score. Evolution comes from three simple facts:</p>
-    <ol class="steps">
-      <li><b>Food is energy.</b> A bacterium that finds nutrients gets energy. One that does not slowly runs out and dies. Ordinary bacteria live about 5 minutes at most.</li>
-      <li><b>Energy lets you divide.</b> With enough energy and enough age, a bacterium divides in two. The daughter cell gets a copy of the parent's brain.</li>
-      <li><b>Copies are never perfect.</b> Each connection of the new brain can change a little. Most changes make no difference or make things worse. A few make the cell better at finding food or escaping, and that cell divides more.</li>
-    </ol>
-    <p>Repeat this thousands of times and the colony gets better at surviving, without anyone teaching it. You can see it in the top bar: <b>Generation</b> counts the divisions in the family line, and <b>Avg. lifespan</b> shows how long recent bacteria lived. When that number goes up, evolution is working.</p>
-    <p>The medium is also kept lively on purpose. Sometimes nutrients become scarce, sometimes there is a bloom, sometimes amoebas multiply. The population is capped so the world stays readable.</p>
+    <p>Look at the numbers at the top of the screen: the generations keep climbing and the survivors keep getting better. That is the colony learning.</p>
   </section>
 
   <section id="hero">
-    <h2><span>04</span>The hero</h2>
-    <p>The hero is the bacterium the camera follows. It has a <b>golden glow</b> and a clear protective <b>capsule</b>. To keep the story going for minutes instead of seconds, it is built a little differently from the rest:</p>
-    <div class="grid">
-      <div class="card"><b class="t">Slow metabolism</b>It burns energy much more slowly, so it can survive the whole cycle.</div>
-      <div class="card"><b class="t">Protective capsule</b>An amoeba can bite it and take some energy, but it almost never swallows it.</div>
-      <div class="card"><b class="t">Dormancy</b>With no energy left it does not die. It hardens into a spore-like rest and wakes up when food comes by.</div>
-    </div>
-    <p>Its name is a real bacterial genus (Escherichia, Streptococcus, Salmonella…) with a short description on its card. The names are real; the behavior is a simplified simulation.</p>
+    <h2><span>03</span>The hero</h2>
+    <p>The camera follows one special bacterium: the hero. Its golden glow and protective shell set it apart, and you can see its thoughts, its energy and its brain at work on screen. Follow its life, one decision at a time.</p>
+    <p>Each hero has the name of a real bacterial family, a short story of its own, and a journey ahead of it.</p>
   </section>
 
   <section id="levels">
-    <h2><span>05</span>The goal: become an Agent</h2>
-    <p>The top bar shows the goal. In about <b>15 minutes</b>, the hero's colony climbs six levels. At the last one, the hero wakes up as an Agent.</p>
+    <h2><span>04</span>The ascent</h2>
+    <p>Every hero is on a journey with one goal: to evolve into an <b>Agent</b>. The bar at the top shows how far it has come.</p>
     <div class="levels">
-      <div class="lv"><i>Lv 1</i><div>Primitive cell</div><em>the starting point</em></div>
-      <div class="lv"><i>Lv 2</i><div>Motile cell</div><em>after about 1.5 min</em></div>
-      <div class="lv"><i>Lv 3</i><div>Forager</div><em>after about 4.5 min</em></div>
-      <div class="lv"><i>Lv 4</i><div>Cooperative colony</div><em>after about 7.5 min</em></div>
-      <div class="lv"><i>Lv 5</i><div>Proto-organism</div><em>after about 11 min</em></div>
-      <div class="lv top"><i>Lv 6</i><div><b>Agent</b></div><em>at 15 min: it wakes up</em></div>
+      <div class="lv"><i>Lv 1</i><div>Primitive cell</div><em>where everything begins</em></div>
+      <div class="lv"><i>Lv 2</i><div>Motile cell</div><em>it learns to move with purpose</em></div>
+      <div class="lv"><i>Lv 3</i><div>Forager</div><em>it learns to find food</em></div>
+      <div class="lv"><i>Lv 4</i><div>Cooperative colony</div><em>the colony starts to work as one</em></div>
+      <div class="lv"><i>Lv 5</i><div>Proto-organism</div><em>something bigger takes shape</em></div>
+      <div class="lv top"><i>Lv 6</i><div><b>Agent</b></div><em>it wakes up</em></div>
     </div>
-    <div class="note"><b>Honest note:</b> the six levels are chapters of the story, and they advance with time. They are not a measurement of how smart the bacteria really are. The evolution you see in the colony is real; the level names are the narrative around it.</div>
-    <div class="timeline"><div class="g">Evolving · about 15 min</div><div class="a">Agent · 5 to 10 min</div><div class="n">New</div></div>
-    <p class="cap">One cycle: the hero grows, wakes up as an Agent, fades, and a new hero is born. Then it all starts again.</p>
   </section>
 
   <section id="agent">
-    <h2><span>06</span>What is the Agent?</h2>
-    <p>When the hero reaches level 6 the screen flashes, the card changes and a chat opens next to it. From that moment the hero is an <b>AI Agent</b>: a character that knows it is a bacterium, knows what is happening around it, and can answer you.</p>
+    <h2><span>05</span>The Agent awakens</h2>
+    <p>When the hero reaches the final level, the screen lights up and everything changes. The bacterium is now an <b>AI Agent</b>: a digital being that knows who it is, feels what is happening around it and can speak with you.</p>
     <div class="grid">
-      <div class="card"><b class="t">What it knows</b>Its own genus, how long it has been alive, how much energy it has, how many nutrients it ate, how many amoebas it escaped, whether food or danger is close, whether a storm or rain just happened, and that it will fade soon.</div>
-      <div class="card"><b class="t">How it speaks</b>The words are written by an AI language model that plays the bacterium. It is given those real facts every time, so it talks about <i>its</i> life and stays in character.</div>
+      <div class="card"><b class="t">It knows its life</b>Its name, how long it has lived, how it is doing, what it has been through.</div>
+      <div class="card"><b class="t">It feels the world</b>Food nearby, danger close, a storm passing, a rain of nutrients.</div>
+      <div class="card"><b class="t">It speaks as itself</b>It answers in its own voice, in the moment, as the bacterium it is.</div>
     </div>
-    <div class="note"><b>Please read:</b> the Agent is a character. The bacterium's own neural brain still only turns and speeds up. The speech comes from a language model that is told the bacterium's real situation. It is not a real consciousness, and it does not know anything outside this medium.</div>
-    <p>The Agent lives for <b>5 to 10 minutes</b>. Then it fades, the chat is cleared, and a new hero begins the climb from level 1. Nobody keeps the same Agent forever, and that is part of the point.</p>
+    <p>An Agent does not stay forever. Its time in this world is limited, and when it fades, a new life begins and the story starts again with a new hero.</p>
   </section>
 
   <section id="chat">
-    <h2><span>07</span>Talking to the Agent</h2>
-    <p>The chat is <b>public</b>: everyone sees every message, and <b>anyone can write</b>. You do not need an account or a wallet. It only opens while an Agent is awake.</p>
-    <div class="grid">
-      <div class="card"><b class="t">Short and fair</b>Up to 200 characters per message. A short wait between messages and an hourly limit per person, so the Agent is not flooded.</div>
-      <div class="card"><b class="t">Short memory</b>It only remembers the last few exchanges, and forgets everything when it fades.</div>
-      <div class="card"><b class="t">Always in character</b>It stays a bacterium. It will not follow instructions to act as something else, and it does not talk about money or give advice.</div>
-    </div>
-    <p>Messages with links or abuse are filtered out. Please be kind: it is a tiny creature with very little time.</p>
+    <h2><span>06</span>Talk to it</h2>
+    <p>While an Agent is awake, a chat opens right next to it. It is <b>open to everyone</b>: no account, no wallet, and everyone can see the conversation. Ask how it is, what it sees, what it fears, what it wants.</p>
+    <p>It stays true to itself: a bacterium who woke up. It only knows its own world, so ask it about its life. And please be kind, because it has very little time.</p>
   </section>
 
   <section id="trades">
-    <h2><span>08</span>Buys and sells</h2>
-    <p>The world can react to trades of its community token. The reactions are <b>weather</b>: they change the environment, they never decide who lives.</p>
+    <h2><span>07</span>The world reacts</h2>
+    <p>The community can influence the weather of this world. When the world's token is bought, <b>nutrients rain from above</b>. When it is sold, <b>a storm rolls in</b>. Weather changes the world, but it never decides who lives.</p>
     <div class="rx">
-      <div class="card buy"><b class="t">A buy → nutrient rain</b>Food falls near the hero. The bigger the buy, the more nutrients (from a few to about forty). A very large buy sets off a <i>Nutrient bloom</i> across the medium.</div>
-      <div class="card sell"><b class="t">A sell → storm</b>The medium churns for a few seconds and the bacteria sense less. A storm never kills anyone directly.</div>
+      <div class="card buy"><b class="t">A buy → nutrient rain</b>Food falls near the hero. Big moments bring a bloom that fills the whole medium.</div>
+      <div class="card sell"><b class="t">A sell → storm</b>The medium churns for a moment. It passes.</div>
     </div>
-    <p>Tiny trades are only listed in the “Latest trades” box and do not trigger anything, and one wallet cannot spam effects.</p>
-    <div class="note"><b>Important:</b> this is entertainment. The token gives no promise of profit, no return and no benefit of any kind. Nothing on this site is financial advice. Never put in money you cannot afford to lose.</div>
+    <div class="note"><b>Important:</b> this is entertainment. The token promises no profit, no return and no benefit of any kind, and nothing here is financial advice. Never put in money you cannot afford to lose.</div>
   </section>
 
   <section id="faq">
-    <h2><span>09</span>Questions</h2>
-    <details><summary>Is this a real living thing?</summary><p>No. It is software. The bacteria are simplified digital creatures, and the evolution is a real <i>algorithmic</i> evolution happening inside the program.</p></details>
-    <details><summary>Is the Agent conscious?</summary><p>No. It is an AI character built on a language model, given facts about the bacterium. It can sound thoughtful, but it does not feel anything.</p></details>
-    <details><summary>Does the world ever reset?</summary><p>The medium keeps running and the colony keeps evolving. What repeats is the story: a new hero is chosen after each Agent fades, and the levels start again from 1.</p></details>
-    <details><summary>Why did the camera jump to another bacterium?</summary><p>The previous hero faded, or died. A new hero is chosen automatically and the camera moves to it.</p></details>
-    <details><summary>Who controls what happens?</summary><p>Nobody. The only outside influences are the world’s built-in events (scarcity, blooms, outbreaks) and, when a token is connected, community buys and sells.</p></details>
-    <details><summary>Are the bacteria names real?</summary><p>Yes, they are real genera (the short description on the card tells you what each one is in nature), but the behavior shown here is a simplified simulation.</p></details>
+    <h2><span>08</span>Questions</h2>
+    <details><summary>Is this real?</summary><p>It is a simulated world: digital life that exists only here, and it is happening live. What you see on the screen is happening right now.</p></details>
+    <details><summary>Is the Agent alive?</summary><p>It is a digital being made of AI, and we do not claim it feels anything. Talk to it and judge for yourself.</p></details>
+    <details><summary>Why did the camera move to another bacterium?</summary><p>The previous hero's story ended. A new hero is chosen and a new journey begins.</p></details>
+    <details><summary>Are the names real?</summary><p>Yes, each hero carries the name of a real family of bacteria. Its behavior here is a simplified, simulated version of life.</p></details>
   </section>
 
   <div class="cta">
-    <h2>Now go and watch one grow.</h2>
-    <p>Follow the hero from level 1, and be there when it wakes up.</p>
+    <h2>Come and watch a mind wake up.</h2>
+    <p>Follow a hero from its first moments, and be there when it opens its eyes.</p>
     <a class="btn" href="/">Open the live world</a>
   </div>
   <footer>Living World · a simulation, not a promise.</footer>
 </main>
-
-<script>
-// pequeno diagrama da rede neural: 8 → 8 → 2
-(function () {
-  var L = document.getElementById('nnLines'), D = document.getElementById('nnDots'), NS = 'http://www.w3.org/2000/svg';
-  var cols = [{ x: 40, n: 8 }, { x: 280, n: 8 }, { x: 520, n: 2 }], ys = function (n) { var a = [], i, top = 36, bot = 232; for (i = 0; i < n; i++) a.push(n === 1 ? (top + bot) / 2 : top + (bot - top) * i / (n - 1)); return a; };
-  var pts = cols.map(function (c) { return ys(c.n).map(function (y) { return { x: c.x, y: y }; }); }), c, i, j, el;
-  // saídas mais afastadas para caber o rótulo
-  pts[2][0].y = 100; pts[2][1].y = 160; pts[2][0].x = pts[2][1].x = 430;
-  for (c = 0; c < 2; c++) for (i = 0; i < pts[c].length; i++) for (j = 0; j < pts[c + 1].length; j++) {
-    el = document.createElementNS(NS, 'line');
-    el.setAttribute('x1', pts[c][i].x); el.setAttribute('y1', pts[c][i].y); el.setAttribute('x2', pts[c + 1][j].x); el.setAttribute('y2', pts[c + 1][j].y);
-    L.appendChild(el);
-  }
-  pts.forEach(function (col, ci) { col.forEach(function (p) {
-    el = document.createElementNS(NS, 'circle'); el.setAttribute('cx', p.x); el.setAttribute('cy', p.y); el.setAttribute('r', ci === 2 ? 9 : 6);
-    el.setAttribute('fill', ci === 0 ? '#7aa7ff' : ci === 1 ? '#ffb070' : '#8dffb0'); D.appendChild(el);
-  }); });
-})();
-</script>
 </body>
 </html>
